@@ -164,9 +164,8 @@ export class IfcViewerService {
     if (!this.components) return;
 
     this.ifcLoader = new OBC.IfcLoader(this.components);
-    await this.ifcLoader.setup();
 
-    // Configure WASM settings
+    // Configure WASM settings BEFORE setup to prevent auto-fetch
     this.ifcLoader.settings.wasm = {
       path: this.config.wasmPath,
       absolute: false,
@@ -174,6 +173,9 @@ export class IfcViewerService {
 
     // Optimize performance
     this.ifcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
+
+    // Setup with autoSetWasm disabled to use our configured path
+    await this.ifcLoader.setup({ autoSetWasm: false });
   }
 
   /**
