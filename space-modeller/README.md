@@ -2,9 +2,19 @@
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.21.
 
+## Setup
+
+**Before running any commands, install dependencies:**
+
+```bash
+npm install
+```
+
+This installs all required packages including the Angular CLI. Without this step, `ng` commands will not work.
+
 ## Development server
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+Run `ng serve` (or `npm start`) for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
 
 ## Code scaffolding
 
