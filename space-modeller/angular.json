@@ -28,7 +28,8 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "allowedCommonJsDependencies": [
-              "stats.js"
+              "stats.js",
+              "web-ifc"
             ],
             "assets": [
               {
