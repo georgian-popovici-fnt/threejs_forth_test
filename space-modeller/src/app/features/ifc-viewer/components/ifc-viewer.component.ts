@@ -6,6 +6,7 @@ import {
   inject,
   afterNextRender,
   signal,
+  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
@@ -22,7 +23,7 @@ import { IfcViewerService } from '../services/ifc-viewer.service';
   styleUrl: './ifc-viewer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IfcViewerComponent {
+export class IfcViewerComponent implements OnDestroy {
   private readonly viewerService = inject(IfcViewerService);
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
