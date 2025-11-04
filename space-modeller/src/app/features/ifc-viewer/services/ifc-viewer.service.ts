@@ -34,6 +34,8 @@ export class IfcViewerService {
   private resizeObserver: ResizeObserver | null = null;
   private config: ViewerConfig = DEFAULT_VIEWER_CONFIG;
   private currentModel: FRAGS.FragmentsModel | null = null;
+  private lastUpdateTime: number = 0;
+  private static readonly UPDATE_THROTTLE_MS = 100; // Throttle updates to max 10 times per second
 
   /**
    * Initialize the viewer with a canvas element
@@ -184,10 +186,10 @@ export class IfcViewerService {
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
 
-      console.log('onFragmentsLoaded event fired - adding to scene');
+      console.log('onFragmentsLoaded event fired for model:', model.modelId);
 
-      // Using type assertion as group property exists at runtime but not in type definitions  
-      const modelGroup = (model as any).group || (model as any).object;
+      // Use the model.object property which is the THREE.Object3D container
+      const modelGroup = model.object;
       
       if (!modelGroup) {
         console.warn('Model has no renderable group/object');
@@ -305,6 +307,17 @@ export class IfcViewerService {
       this.controls.update();
     }
 
+    // Update FragmentsModels for dynamic LOD and culling (throttled to avoid excessive calls)
+    // Only update if enough time has passed since last update
+    const now = Date.now();
+    if (this.fragmentsManager?.core && now - this.lastUpdateTime >= IfcViewerService.UPDATE_THROTTLE_MS) {
+      this.lastUpdateTime = now;
+      // Update is async but we don't await it to avoid blocking the render loop
+      this.fragmentsManager.core.update().catch((err) => {
+        console.warn('FragmentsModels update error:', err);
+      });
+    }
+
     // Render scene
     this.renderer.render(this.scene, this.camera);
 
@@ -333,7 +346,6 @@ export class IfcViewerService {
 
     try {
       console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
-      console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
 
       // Load IFC with coordinate transformation enabled (true)
       // This transforms the model coordinates to origin for better viewport positioning
@@ -345,23 +357,56 @@ export class IfcViewerService {
         },
       });
 
-      console.log('IFC file loaded successfully, model:', model);
+      console.log('IFC file loaded successfully');
+      console.log('Model has', model.tiles.size, 'tiles initially');
+
+      // Set camera for dynamic tile loading - required for FragmentsModel to load geometry
+      if (this.camera) {
+        try {
+          model.useCamera(this.camera);
+          // Force initial update to load visible tiles
+          // Parameter 'true' forces immediate update rather than throttled update
+          await this.fragmentsManager.core.update(true);
+          console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
+          
+          if (model.tiles.size === 0) {
+            console.warn(
+              'No tiles loaded after update. Model may not have geometry or ' +
+              'geometry may still be loading asynchronously.'
+            );
+          }
+        } catch (error) {
+          console.error('Error setting up model camera and loading tiles:', error);
+          console.warn(
+            'Model will be added to scene but geometry may not be visible. ' +
+            'Try reloading the file.'
+          );
+          // Continue execution - model will be added to scene even if tile loading fails
+        }
+      } else {
+        console.warn(
+          'No camera available - model tiles cannot be loaded. ' +
+          'Geometry will not be visible.'
+        );
+      }
       
-      // Manually add model to scene as the onFragmentsLoaded event may not fire
-      // Using type assertion as group property exists at runtime but not in type definitions
-      const modelGroup = (model as any).group || (model as any).object;
+      // Add model to scene
+      // The model.object is a THREE.Object3D container that holds the mesh tiles
+      const modelGroup = model.object;
       
       if (modelGroup && this.scene) {
         // Check if model was already added by onFragmentsLoaded event
         if (!this.scene.children.includes(modelGroup)) {
-          console.log('Manually adding model to scene (event did not fire)');
+          console.log('Adding model to scene');
           this.scene.add(modelGroup);
           this.currentModel = model;
           
-          // Defer camera fitting to allow geometry to populate
+          // Fit camera to view the model after a short delay to allow tiles to populate
           setTimeout(() => {
             this.fitCameraToModel(modelGroup);
           }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+        } else {
+          console.log('Model already in scene (added by event)');
         }
       }
       
