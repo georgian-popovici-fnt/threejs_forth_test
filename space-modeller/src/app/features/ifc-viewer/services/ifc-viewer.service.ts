@@ -6,6 +6,8 @@ import * as OBC from '@thatopen/components';
 import * as FRAGS from '@thatopen/fragments';
 import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/viewer-config.model';
 import { TIMING, VIEWER } from '../../../shared/constants/app.constants';
+import { LoggerService } from '../../../shared/services/logger.service';
+import { environment } from '../../../../environments/environment';
 
 /**
  * Service that manages the 3D viewer, Three.js renderer, and @thatopen/components
@@ -15,6 +17,7 @@ import { TIMING, VIEWER } from '../../../shared/constants/app.constants';
 })
 export class IfcViewerService {
   private readonly ngZone = inject(NgZone);
+  private readonly logger = inject(LoggerService);
 
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -97,10 +100,10 @@ export class IfcViewerService {
 
     // Initialize the Components system
     this.components.init();
-    console.log('Components system initialized');
+    this.logger.info('Components system initialized');
 
     // Initialize stats if enabled
-    if (this.config.showStats) {
+    if (this.config.showStats && environment.enableStats) {
       this.initializeStats();
     }
 
@@ -157,7 +160,7 @@ export class IfcViewerService {
     // Initialize worker with URL
     try {
       this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
-      console.log('FragmentsManager.init() called with worker URL:', this.config.fragmentsWorkerUrl);
+      this.logger.info('FragmentsManager.init() called with worker URL:', this.config.fragmentsWorkerUrl);
 
       // Wait for the worker to be ready (poll with timeout)
       // The init() method is synchronous but worker loading is async
@@ -173,12 +176,12 @@ export class IfcViewerService {
       }
 
       if (this.fragmentsManager.initialized) {
-        console.log('FragmentsManager worker initialized successfully');
+        this.logger.info('FragmentsManager worker initialized successfully');
       } else {
-        console.warn('FragmentsManager worker may not be fully initialized after waiting');
+        this.logger.warn('FragmentsManager worker may not be fully initialized after waiting');
       }
     } catch (error) {
-      console.error('Error initializing FragmentsManager:', error);
+      this.logger.error('Error initializing FragmentsManager:', error);
       throw error;
     }
 
@@ -186,13 +189,13 @@ export class IfcViewerService {
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
 
-      console.log('onFragmentsLoaded event fired for model:', model.modelId);
+      this.logger.debug('onFragmentsLoaded event fired for model:', model.modelId);
 
       // Use the model.object property which is the THREE.Object3D container
       const modelGroup = model.object;
       
       if (!modelGroup) {
-        console.warn('Model has no renderable group/object');
+        this.logger.warn('Model has no renderable group/object');
         return;
       }
       
@@ -209,7 +212,7 @@ export class IfcViewerService {
         this.fitCameraToModel(modelGroup);
       }, TIMING.CAMERA_FIT_DELAY);
 
-      console.log('Model added to scene successfully via event');
+      this.logger.info('Model added to scene successfully via event');
     });
   }
 
@@ -234,7 +237,7 @@ export class IfcViewerService {
     // Setup with autoSetWasm disabled to use our configured path
     await this.ifcLoader.setup({ autoSetWasm: false });
 
-    console.log('IfcLoader initialized successfully');
+    this.logger.info('IfcLoader initialized successfully');
   }
 
   /**
@@ -314,7 +317,7 @@ export class IfcViewerService {
       this.lastUpdateTime = now;
       // Update is async but we don't await it to avoid blocking the render loop
       this.fragmentsManager.core.update().catch((err) => {
-        console.warn('FragmentsModels update error:', err);
+        this.logger.warn('FragmentsModels update error:', err);
       });
     }
 
@@ -335,30 +338,31 @@ export class IfcViewerService {
     fileName: string = 'model'
   ): Promise<FRAGS.FragmentsModel | null> {
     if (!this.ifcLoader) {
-      console.error('IFC Loader not initialized');
+      this.logger.error('IFC Loader not initialized');
       return null;
     }
 
     if (!this.fragmentsManager) {
-      console.error('FragmentsManager not initialized');
+      this.logger.error('FragmentsManager not initialized');
       return null;
     }
 
     try {
-      console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
+      this.logger.startPerformanceMark('ifc-load');
+      this.logger.info(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
 
       // Load IFC with coordinate transformation enabled (true)
       // This transforms the model coordinates to origin for better viewport positioning
       const model = await this.ifcLoader.load(buffer, true, fileName, {
         processData: {
           progressCallback: (progress: number) => {
-            console.log(`Loading progress: ${(progress * 100).toFixed(1)}%`);
+            this.logger.debug(`Loading progress: ${(progress * 100).toFixed(1)}%`);
           },
         },
       });
 
-      console.log('IFC file loaded successfully');
-      console.log('Model has', model.tiles.size, 'tiles initially');
+      this.logger.info('IFC file loaded successfully');
+      this.logger.debug('Model has', model.tiles.size, 'tiles initially');
 
       // Set camera for dynamic tile loading - required for FragmentsModel to load geometry
       if (this.camera) {
@@ -367,24 +371,24 @@ export class IfcViewerService {
           // Force initial update to load visible tiles
           // Parameter 'true' forces immediate update rather than throttled update
           await this.fragmentsManager.core.update(true);
-          console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
+          this.logger.debug('After camera set and update:', model.tiles.size, 'tiles loaded');
           
           if (model.tiles.size === 0) {
-            console.warn(
+            this.logger.warn(
               'No tiles loaded after update. Model may not have geometry or ' +
               'geometry may still be loading asynchronously.'
             );
           }
         } catch (error) {
-          console.error('Error setting up model camera and loading tiles:', error);
-          console.warn(
+          this.logger.error('Error setting up model camera and loading tiles:', error);
+          this.logger.warn(
             'Model will be added to scene but geometry may not be visible. ' +
             'Try reloading the file.'
           );
           // Continue execution - model will be added to scene even if tile loading fails
         }
       } else {
-        console.warn(
+        this.logger.warn(
           'No camera available - model tiles cannot be loaded. ' +
           'Geometry will not be visible.'
         );
@@ -397,7 +401,7 @@ export class IfcViewerService {
       if (modelGroup && this.scene) {
         // Check if model was already added by onFragmentsLoaded event
         if (!this.scene.children.includes(modelGroup)) {
-          console.log('Adding model to scene');
+          this.logger.info('Adding model to scene');
           this.scene.add(modelGroup);
           this.currentModel = model;
           
@@ -406,13 +410,14 @@ export class IfcViewerService {
             this.fitCameraToModel(modelGroup);
           }, TIMING.CAMERA_FIT_DELAY);
         } else {
-          console.log('Model already in scene (added by event)');
+          this.logger.debug('Model already in scene (added by event)');
         }
       }
       
+      this.logger.endPerformanceMark('ifc-load');
       return model;
     } catch (error) {
-      console.error('Error loading IFC file:', error);
+      this.logger.error('Error loading IFC file:', error);
       throw error; // Re-throw to propagate to component
     }
   }
@@ -428,7 +433,7 @@ export class IfcViewerService {
     
     // Check if bounding box is valid
     if (box.isEmpty()) {
-      console.warn('Model bounding box is empty, using default camera distance');
+      this.logger.warn('Model bounding box is empty, using default camera distance');
       // Position camera at a reasonable default distance
       const defaultDistance = 20;
       const direction = new THREE.Vector3(1, 1, 1).normalize();
@@ -442,7 +447,7 @@ export class IfcViewerService {
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
-    console.log('Model bounding box:', { 
+    this.logger.debug('Model bounding box:', { 
       min: box.min, 
       max: box.max, 
       size, 
@@ -468,7 +473,7 @@ export class IfcViewerService {
     this.controls.target.copy(center);
     this.controls.update();
 
-    console.log('Camera fitted to model:', {
+    this.logger.debug('Camera fitted to model:', {
       position: this.camera.position,
       target: this.controls.target,
       distance: cameraDistance
@@ -497,9 +502,9 @@ export class IfcViewerService {
       // Clean up
       URL.revokeObjectURL(url);
 
-      console.log(`Exported fragments as ${fileName}.frag`);
+      this.logger.info(`Exported fragments as ${fileName}.frag`);
     } catch (error) {
-      console.error('Error exporting fragments:', error);
+      this.logger.error('Error exporting fragments:', error);
     }
   }
 
@@ -581,7 +586,7 @@ export class IfcViewerService {
     this.canvas = null;
     this.currentModel = null;
 
-    console.log('Viewer disposed successfully');
+    this.logger.info('Viewer disposed successfully');
   }
 
   /**

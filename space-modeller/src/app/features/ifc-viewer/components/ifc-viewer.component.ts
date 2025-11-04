@@ -11,6 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
 import { NotificationService } from '../../../shared/services/notification.service';
+import { LoggerService } from '../../../shared/services/logger.service';
 import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shared/constants/app.constants';
 
 /**
@@ -28,6 +29,7 @@ import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shar
 export class IfcViewerComponent implements OnDestroy {
   private readonly viewerService = inject(IfcViewerService);
   private readonly notificationService = inject(NotificationService);
+  private readonly logger = inject(LoggerService);
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
   protected readonly isLoading = signal<boolean>(false);
@@ -72,27 +74,27 @@ export class IfcViewerComponent implements OnDestroy {
     this.currentFileName.set(file.name);
 
     try {
-      console.log(`Starting to load file: ${file.name}`);
+      this.logger.info(`Starting to load file: ${file.name}`);
 
       // Read file as ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
-      console.log(`File read successfully, size: ${uint8Array.byteLength} bytes`);
+      this.logger.debug(`File read successfully, size: ${uint8Array.byteLength} bytes`);
 
       // Load IFC file
       const modelName = file.name.replace('.ifc', '');
       const model = await this.viewerService.loadIfcFile(uint8Array, modelName);
 
       if (model) {
-        console.log(`Successfully loaded: ${file.name}`);
+        this.logger.info(`Successfully loaded: ${file.name}`);
         this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(file.name));
       } else {
-        console.error('Model loading returned null');
+        this.logger.error('Model loading returned null');
         this.notificationService.error(`${ERROR_MESSAGES.LOAD_FAILED}. Check console for details.`);
       }
     } catch (error) {
-      console.error('Error loading IFC file:', error);
+      this.logger.error('Error loading IFC file:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.notificationService.error(
         `Error loading IFC file: ${errorMessage}. Check console for details.`
@@ -122,7 +124,7 @@ export class IfcViewerComponent implements OnDestroy {
       await this.viewerService.exportFragments(baseName);
       this.notificationService.success(SUCCESS_MESSAGES.FILE_EXPORTED(baseName));
     } catch (error) {
-      console.error('Error exporting fragments:', error);
+      this.logger.error('Error exporting fragments:', error);
       this.notificationService.error(ERROR_MESSAGES.EXPORT_FAILED);
     }
   }
