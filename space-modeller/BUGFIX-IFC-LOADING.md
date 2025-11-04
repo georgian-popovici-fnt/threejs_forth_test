@@ -161,8 +161,7 @@ If loading still fails, check browser console for:
 
 ## Known Limitations
 
-- The FragmentsManager worker is loaded from a CDN (https://thatopen.github.io/engine_fragment/resources/worker.mjs)
-- If the CDN is unavailable, loading will fail
+- The FragmentsManager worker is loaded from local assets (/assets/fragments/worker.mjs) to avoid CORS issues
 - Large IFC files may take time to load and process
 - Browser must support WebAssembly
 - User notifications currently use `alert()` - planned for replacement with proper notification service
