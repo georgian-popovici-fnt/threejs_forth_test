@@ -1,0 +1,24 @@
+<div class="filter-container">
+  <h3 class="filter-title">IFC Classes</h3>
+  
+  @if (ifcClasses().length === 0) {
+    <p class="filter-empty">No classes available. Load an IFC file first.</p>
+  } @else {
+    <ul class="filter-list">
+      @for (ifcClass of ifcClasses(); track ifcClass.name) {
+        <li class="filter-item">
+          <label class="filter-label">
+            <input
+              type="checkbox"
+              class="filter-checkbox"
+              [checked]="ifcClass.visible"
+              (change)="onToggleVisibility(ifcClass)"
+            />
+            <span class="filter-name">{{ ifcClass.name }}</span>
+            <span class="filter-count">({{ ifcClass.itemIds.length }})</span>
+          </label>
+        </li>
+      }
+    </ul>
+  }
+</div>

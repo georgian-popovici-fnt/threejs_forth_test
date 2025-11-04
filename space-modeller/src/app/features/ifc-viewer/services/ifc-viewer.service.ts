@@ -625,4 +625,61 @@ export class IfcViewerService {
   getCurrentModel(): FRAGS.FragmentsModel | null {
     return this.currentModel;
   }
+
+  /**
+   * Get all IFC categories from the current model
+   */
+  async getCategories(): Promise<string[]> {
+    if (!this.currentModel) {
+      this.logger.warn('No model loaded - cannot get categories');
+      return [];
+    }
+
+    try {
+      const categories = await this.currentModel.getCategories();
+      this.logger.debug('Retrieved categories:', categories);
+      return categories;
+    } catch (error) {
+      this.logger.error('Error getting categories:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get item IDs for specific categories
+   */
+  async getItemsOfCategories(categories: string[]): Promise<{ [category: string]: number[] }> {
+    if (!this.currentModel) {
+      this.logger.warn('No model loaded - cannot get items by category');
+      return {};
+    }
+
+    try {
+      // Convert category names to RegExp patterns for exact matching
+      const regexPatterns = categories.map(cat => new RegExp(`^${cat}$`));
+      const items = await this.currentModel.getItemsOfCategories(regexPatterns);
+      this.logger.debug('Retrieved items for categories:', items);
+      return items;
+    } catch (error) {
+      this.logger.error('Error getting items by category:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Set visibility for specific items
+   */
+  async setItemsVisible(itemIds: number[], visible: boolean): Promise<void> {
+    if (!this.currentModel) {
+      this.logger.warn('No model loaded - cannot set visibility');
+      return;
+    }
+
+    try {
+      await this.currentModel.setVisible(itemIds, visible);
+      this.logger.debug(`Set visibility to ${visible} for ${itemIds.length} items`);
+    } catch (error) {
+      this.logger.error('Error setting item visibility:', error);
+    }
+  }
 }
