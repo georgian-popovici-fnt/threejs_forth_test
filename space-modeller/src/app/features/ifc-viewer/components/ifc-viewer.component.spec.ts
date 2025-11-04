@@ -47,6 +47,19 @@ describe('IfcViewerComponent', () => {
     expect(mockViewerService.dispose).toHaveBeenCalled();
   });
 
+  it('should toggle sidebar state', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    expect(component['isSidebarCollapsed']()).toBeFalse();
+
+    component['toggleSidebar']();
+    expect(component['isSidebarCollapsed']()).toBeTrue();
+
+    component['toggleSidebar']();
+    expect(component['isSidebarCollapsed']()).toBeFalse();
+  });
+
   it('should set loading state while loading IFC file', async () => {
     const fixture = TestBed.createComponent(IfcViewerComponent);
     const component = fixture.componentInstance;

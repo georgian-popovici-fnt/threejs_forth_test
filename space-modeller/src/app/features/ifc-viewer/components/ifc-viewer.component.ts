@@ -40,6 +40,7 @@ export class IfcViewerComponent implements OnDestroy {
 
   protected readonly isLoading = signal<boolean>(false);
   protected readonly currentFileName = signal<string>('');
+  protected readonly isSidebarCollapsed = signal<boolean>(false);
 
   constructor() {
     afterNextRender(() => {
@@ -135,6 +136,13 @@ export class IfcViewerComponent implements OnDestroy {
       this.logger.error('Error exporting fragments:', error);
       this.notificationService.error(ERROR_MESSAGES.EXPORT_FAILED);
     }
+  }
+
+  /**
+   * Toggle sidebar collapsed state
+   */
+  protected toggleSidebar(): void {
+    this.isSidebarCollapsed.update(collapsed => !collapsed);
   }
 
   /**
