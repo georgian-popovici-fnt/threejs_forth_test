@@ -62,18 +62,29 @@ export class IfcViewerComponent implements OnDestroy {
     this.currentFileName.set(file.name);
 
     try {
+      console.log(`Starting to load file: ${file.name}`);
+
       // Read file as ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
+      console.log(`File read successfully, size: ${uint8Array.byteLength} bytes`);
+
       // Load IFC file
       const modelName = file.name.replace('.ifc', '');
-      await this.viewerService.loadIfcFile(uint8Array, modelName);
+      const model = await this.viewerService.loadIfcFile(uint8Array, modelName);
 
-      console.log(`Successfully loaded: ${file.name}`);
+      if (model) {
+        console.log(`Successfully loaded: ${file.name}`);
+        alert(`Successfully loaded: ${file.name}`);
+      } else {
+        console.error('Model loading returned null');
+        alert('Error: Model loading failed. Check console for details.');
+      }
     } catch (error) {
       console.error('Error loading IFC file:', error);
-      alert('Error loading IFC file. Check console for details.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error loading IFC file: ${errorMessage}\n\nCheck console for details.`);
     } finally {
       this.isLoading.set(false);
       // Reset input to allow reloading the same file

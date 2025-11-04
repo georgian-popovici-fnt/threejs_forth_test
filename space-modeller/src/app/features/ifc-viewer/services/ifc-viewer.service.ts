@@ -140,20 +140,39 @@ export class IfcViewerService {
   private async initializeFragmentsManager(): Promise<void> {
     if (!this.components) return;
 
-    this.fragmentsManager = new OBC.FragmentsManager(this.components);
+    // Use components.get() to properly instantiate and register the component
+    this.fragmentsManager = this.components.get(OBC.FragmentsManager);
 
     // Initialize worker with URL
-    this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
+    try {
+      this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
+      console.log('FragmentsManager initialized successfully');
+
+      // Wait a bit for the worker to be ready
+      // The init() method is synchronous but worker loading is async
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (!this.fragmentsManager.initialized) {
+        console.warn('FragmentsManager may not be fully initialized yet');
+      }
+    } catch (error) {
+      console.error('Error initializing FragmentsManager:', error);
+      throw error;
+    }
 
     // Listen for new fragments
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
+
+      console.log('Fragments loaded, adding to scene:', model.name || model.uuid);
 
       // Add to scene
       this.scene.add(model.group);
 
       // Store current model
       this.currentModel = model;
+
+      console.log('Model added to scene successfully');
     });
   }
 
@@ -163,7 +182,8 @@ export class IfcViewerService {
   private async initializeIfcLoader(): Promise<void> {
     if (!this.components) return;
 
-    this.ifcLoader = new OBC.IfcLoader(this.components);
+    // Use components.get() to properly instantiate and register the component
+    this.ifcLoader = this.components.get(OBC.IfcLoader);
 
     // Configure WASM settings BEFORE setup to prevent auto-fetch
     this.ifcLoader.settings.wasm = {
@@ -176,6 +196,8 @@ export class IfcViewerService {
 
     // Setup with autoSetWasm disabled to use our configured path
     await this.ifcLoader.setup({ autoSetWasm: false });
+
+    console.log('IfcLoader initialized successfully');
   }
 
   /**
@@ -269,10 +291,16 @@ export class IfcViewerService {
       return null;
     }
 
-    try {
-      console.log(`Loading IFC file: ${fileName}`);
+    if (!this.fragmentsManager) {
+      console.error('FragmentsManager not initialized');
+      return null;
+    }
 
-      const model = await this.ifcLoader.load(buffer, false, fileName, {
+    try {
+      console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
+      console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
+
+      const model = await this.ifcLoader.load(buffer, true, fileName, {
         processData: {
           progressCallback: (progress: number) => {
             console.log(`Loading progress: ${(progress * 100).toFixed(1)}%`);
@@ -280,11 +308,11 @@ export class IfcViewerService {
         },
       });
 
-      console.log('IFC file loaded successfully');
+      console.log('IFC file loaded successfully, model:', model);
       return model;
     } catch (error) {
       console.error('Error loading IFC file:', error);
-      return null;
+      throw error; // Re-throw to propagate to component
     }
   }
 
