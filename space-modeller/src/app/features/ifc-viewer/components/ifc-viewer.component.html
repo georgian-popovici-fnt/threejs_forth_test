@@ -93,6 +93,12 @@
         </svg>
         <span>Download .frag</span>
       </button>
+
+      <!-- IFC Class Filter -->
+      <app-ifc-class-filter
+        [classes]="ifcClasses()"
+        (visibilityChange)="onClassVisibilityChange($event)"
+      ></app-ifc-class-filter>
     </div>
   </aside>
 

@@ -1,0 +1,129 @@
+/* Filter Container */
+.filter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Filter Title */
+.filter-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.3px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+/* Empty State */
+.filter-empty {
+  margin: 0;
+  padding: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Filter List */
+.filter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for filter list */
+.filter-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.filter-list::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 3px;
+}
+
+.filter-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
+}
+
+/* Filter Item */
+.filter-item {
+  margin: 0;
+  padding: 0;
+}
+
+/* Filter Label */
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.filter-label:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+/* Checkbox */
+.filter-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+  flex-shrink: 0;
+}
+
+/* Filter Name */
+.filter-name {
+  flex: 1;
+  font-size: 14px;
+  color: white;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Item Count */
+.filter-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+  font-weight: 400;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .filter-title {
+    font-size: 15px;
+  }
+
+  .filter-name {
+    font-size: 13px;
+  }
+
+  .filter-count {
+    font-size: 11px;
+  }
+
+  .filter-list {
+    max-height: 300px;
+  }
+}

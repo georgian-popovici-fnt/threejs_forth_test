@@ -14,7 +14,15 @@ describe('IfcViewerComponent', () => {
       'exportFragments',
       'dispose',
       'getCurrentModel',
+      'getCategories',
+      'getItemsOfCategories',
+      'setItemsVisible',
     ]);
+
+    // Add default return values for new methods
+    mockViewerService.getCategories.and.returnValue(Promise.resolve([]));
+    mockViewerService.getItemsOfCategories.and.returnValue(Promise.resolve({}));
+    mockViewerService.setItemsVisible.and.returnValue(Promise.resolve());
 
     mockNotificationService = jasmine.createSpyObj('NotificationService', [
       'success',

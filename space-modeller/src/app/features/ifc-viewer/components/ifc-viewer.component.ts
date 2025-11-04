@@ -19,6 +19,8 @@ import {
   readFileAsArrayBuffer,
   getFileNameWithoutExtension,
 } from '../../../shared/utils/file.utils';
+import { IfcClass } from '../../../shared/models/ifc-class.model';
+import { IfcClassFilterComponent } from './ifc-class-filter.component';
 
 /**
  * IFC Viewer Component
@@ -27,7 +29,7 @@ import {
 @Component({
   selector: 'app-ifc-viewer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IfcClassFilterComponent],
   templateUrl: './ifc-viewer.component.html',
   styleUrl: './ifc-viewer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +43,7 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly isLoading = signal<boolean>(false);
   protected readonly currentFileName = signal<string>('');
   protected readonly isSidebarCollapsed = signal<boolean>(false);
+  protected readonly ifcClasses = signal<IfcClass[]>([]);
 
   constructor() {
     afterNextRender(() => {
@@ -98,6 +101,9 @@ export class IfcViewerComponent implements OnDestroy {
       if (model) {
         this.logger.info(`Successfully loaded: ${sanitizedName}`);
         this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(sanitizedName));
+        
+        // Load IFC classes after successful model load
+        await this.loadIfcClasses();
       } else {
         this.logger.error('Model loading returned null');
         this.notificationService.error(`${ERROR_MESSAGES.LOAD_FAILED}. Check console for details.`);
@@ -143,6 +149,73 @@ export class IfcViewerComponent implements OnDestroy {
    */
   protected toggleSidebar(): void {
     this.isSidebarCollapsed.update(collapsed => !collapsed);
+  }
+
+  /**
+   * Load IFC classes from the current model
+   */
+  private async loadIfcClasses(): Promise<void> {
+    try {
+      this.logger.info('Loading IFC classes...');
+      
+      // Get all categories from the model
+      const categories = await this.viewerService.getCategories();
+      
+      if (categories.length === 0) {
+        this.logger.warn('No categories found in the model');
+        return;
+      }
+
+      // Get items for each category
+      const categoryItems = await this.viewerService.getItemsOfCategories(categories);
+      
+      // Create IfcClass objects with visibility set to true by default
+      const ifcClasses: IfcClass[] = categories
+        .map(category => ({
+          name: category,
+          visible: true,
+          itemIds: categoryItems[category] || [],
+        }))
+        .filter(ifcClass => ifcClass.itemIds.length > 0) // Only include categories with items
+        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+
+      this.ifcClasses.set(ifcClasses);
+      this.logger.info(`Loaded ${ifcClasses.length} IFC classes`);
+    } catch (error) {
+      this.logger.error('Error loading IFC classes:', error);
+      this.notificationService.error('Failed to load IFC classes');
+    }
+  }
+
+  /**
+   * Handle visibility change for an IFC class
+   */
+  protected async onClassVisibilityChange(event: { className: string; visible: boolean }): Promise<void> {
+    try {
+      // Find the class
+      const classes = this.ifcClasses();
+      const classIndex = classes.findIndex(c => c.name === event.className);
+      
+      if (classIndex === -1) {
+        this.logger.warn(`Class not found: ${event.className}`);
+        return;
+      }
+
+      const ifcClass = classes[classIndex];
+
+      // Update visibility in the viewer
+      await this.viewerService.setItemsVisible(ifcClass.itemIds, event.visible);
+
+      // Update local state
+      const updatedClasses = [...classes];
+      updatedClasses[classIndex] = { ...ifcClass, visible: event.visible };
+      this.ifcClasses.set(updatedClasses);
+
+      this.logger.debug(`Set visibility for ${event.className} to ${event.visible}`);
+    } catch (error) {
+      this.logger.error('Error changing class visibility:', error);
+      this.notificationService.error('Failed to change class visibility');
+    }
   }
 
   /**
