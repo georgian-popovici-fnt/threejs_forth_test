@@ -88,6 +88,10 @@ export class IfcViewerService {
     // Initialize IFC Loader
     await this.initializeIfcLoader();
 
+    // Initialize the Components system
+    this.components.init();
+    console.log('Components system initialized');
+
     // Initialize stats if enabled
     if (this.config.showStats) {
       this.initializeStats();
