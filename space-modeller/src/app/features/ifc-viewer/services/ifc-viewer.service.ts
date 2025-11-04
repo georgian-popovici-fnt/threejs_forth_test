@@ -191,6 +191,9 @@ export class IfcViewerService {
       // Store current model
       this.currentModel = model;
 
+      // Fit camera to view the model
+      this.fitCameraToModel(model.group);
+
       console.log('Model added to scene successfully');
     });
   }
@@ -335,6 +338,57 @@ export class IfcViewerService {
       console.error('Error loading IFC file:', error);
       throw error; // Re-throw to propagate to component
     }
+  }
+
+  /**
+   * Fit camera to view the entire model
+   */
+  private fitCameraToModel(group: THREE.Group): void {
+    if (!this.camera || !this.controls) return;
+
+    // Compute bounding box of the model
+    const box = new THREE.Box3().setFromObject(group);
+    
+    // Check if bounding box is valid
+    if (box.isEmpty()) {
+      console.warn('Model bounding box is empty, cannot fit camera');
+      return;
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    console.log('Model bounding box:', { 
+      min: box.min, 
+      max: box.max, 
+      size, 
+      center 
+    });
+
+    // Calculate the maximum dimension
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Calculate camera distance to fit the model in view
+    // Using FOV and desired framing (1.5x for some padding)
+    const fov = this.camera.fov * (Math.PI / 180); // Convert to radians
+    const cameraDistance = (maxDim / 2) / Math.tan(fov / 2) * 1.5;
+
+    // Position camera at an angle that shows the model well
+    const direction = new THREE.Vector3(1, 1, 1).normalize();
+    const cameraPosition = center.clone().add(direction.multiplyScalar(cameraDistance));
+
+    // Update camera position
+    this.camera.position.copy(cameraPosition);
+
+    // Update controls target to model center
+    this.controls.target.copy(center);
+    this.controls.update();
+
+    console.log('Camera fitted to model:', {
+      position: this.camera.position,
+      target: this.controls.target,
+      distance: cameraDistance
+    });
   }
 
   /**
