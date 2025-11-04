@@ -313,9 +313,9 @@ export class IfcViewerService {
     if (this.fragmentsManager?.core && now - this.lastUpdateTime >= IfcViewerService.UPDATE_THROTTLE_MS) {
       this.lastUpdateTime = now;
       // Update is async but we don't await it to avoid blocking the render loop
-      this.fragmentsManager.core.update().catch(err => 
-        console.warn('FragmentsModels update error:', err)
-      );
+      this.fragmentsManager.core.update().catch((err) => {
+        console.warn('FragmentsModels update error:', err);
+      });
     }
 
     // Render scene
@@ -365,19 +365,29 @@ export class IfcViewerService {
         try {
           model.useCamera(this.camera);
           // Force initial update to load visible tiles
+          // Parameter 'true' forces immediate update rather than throttled update
           await this.fragmentsManager.core.update(true);
           console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
           
           if (model.tiles.size === 0) {
-            console.warn('No tiles loaded after update. Model may not have geometry or geometry may still be loading asynchronously.');
+            console.warn(
+              'No tiles loaded after update. Model may not have geometry or ' +
+              'geometry may still be loading asynchronously.'
+            );
           }
         } catch (error) {
           console.error('Error setting up model camera and loading tiles:', error);
-          console.warn('Model will be added to scene but geometry may not be visible. Try reloading the file.');
+          console.warn(
+            'Model will be added to scene but geometry may not be visible. ' +
+            'Try reloading the file.'
+          );
           // Continue execution - model will be added to scene even if tile loading fails
         }
       } else {
-        console.warn('No camera available - model tiles cannot be loaded. Geometry will not be visible.');
+        console.warn(
+          'No camera available - model tiles cannot be loaded. ' +
+          'Geometry will not be visible.'
+        );
       }
       
       // Add model to scene
