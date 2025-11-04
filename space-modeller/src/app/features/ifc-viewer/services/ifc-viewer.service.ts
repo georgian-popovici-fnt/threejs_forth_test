@@ -20,6 +20,10 @@ export class IfcViewerService {
   private readonly ngZone = inject(NgZone);
   private readonly logger = inject(LoggerService);
 
+  // Camera constants
+  private readonly ORTHOGRAPHIC_FRUSTUM_SIZE = 20;
+  private readonly ORTHOGRAPHIC_CAMERA_DISTANCE = 50;
+
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
@@ -148,7 +152,7 @@ export class IfcViewerService {
     );
 
     // Create orthographic camera
-    const frustumSize = 20;
+    const frustumSize = this.ORTHOGRAPHIC_FRUSTUM_SIZE;
     this.orthographicCamera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
       (frustumSize * aspect) / 2,
@@ -192,21 +196,21 @@ export class IfcViewerService {
       case CameraMode.ORTHOGRAPHIC_TOP:
         this.camera = this.orthographicCamera;
         // Top view: look down from positive Y
-        this.camera.position.set(currentTarget.x, currentTarget.y + 50, currentTarget.z);
+        this.camera.position.set(currentTarget.x, currentTarget.y + this.ORTHOGRAPHIC_CAMERA_DISTANCE, currentTarget.z);
         this.camera.up.set(0, 0, -1); // Set up vector for proper orientation
         break;
 
       case CameraMode.ORTHOGRAPHIC_FRONT:
         this.camera = this.orthographicCamera;
         // Front view: look from positive Z
-        this.camera.position.set(currentTarget.x, currentTarget.y, currentTarget.z + 50);
+        this.camera.position.set(currentTarget.x, currentTarget.y, currentTarget.z + this.ORTHOGRAPHIC_CAMERA_DISTANCE);
         this.camera.up.set(0, 1, 0); // Standard up vector
         break;
 
       case CameraMode.ORTHOGRAPHIC_SIDE:
         this.camera = this.orthographicCamera;
         // Side view: look from positive X
-        this.camera.position.set(currentTarget.x + 50, currentTarget.y, currentTarget.z);
+        this.camera.position.set(currentTarget.x + this.ORTHOGRAPHIC_CAMERA_DISTANCE, currentTarget.y, currentTarget.z);
         this.camera.up.set(0, 1, 0); // Standard up vector
         break;
     }
@@ -393,7 +397,7 @@ export class IfcViewerService {
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
     } else if (this.camera instanceof THREE.OrthographicCamera) {
-      const frustumSize = 20;
+      const frustumSize = this.ORTHOGRAPHIC_FRUSTUM_SIZE;
       this.camera.left = (-frustumSize * aspect) / 2;
       this.camera.right = (frustumSize * aspect) / 2;
       this.camera.top = frustumSize / 2;
