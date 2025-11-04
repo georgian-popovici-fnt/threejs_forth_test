@@ -14,7 +14,7 @@
       class="sidebar-toggle"
       (click)="toggleSidebar()"
       type="button"
-      aria-label="Toggle sidebar"
+      [attr.aria-label]="isSidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
       [attr.aria-expanded]="!isSidebarCollapsed()"
     >
       <svg
@@ -27,6 +27,8 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
+        role="img"
+        [attr.aria-label]="isSidebarCollapsed() ? 'Expand icon' : 'Collapse icon'"
       >
         @if (isSidebarCollapsed()) {
           <polyline points="9 18 15 12 9 6"></polyline>
