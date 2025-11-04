@@ -150,14 +150,22 @@ export class IfcViewerService {
     // Initialize worker with URL
     try {
       this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
-      console.log('FragmentsManager initialized successfully');
+      console.log('FragmentsManager.init() called with worker URL:', this.config.fragmentsWorkerUrl);
 
-      // Wait a bit for the worker to be ready
+      // Wait for the worker to be ready (poll with timeout)
       // The init() method is synchronous but worker loading is async
-      await new Promise(resolve => setTimeout(resolve, 100));
+      const maxWaitTime = 5000; // 5 seconds
+      const pollInterval = 100; // Check every 100ms
+      const startTime = Date.now();
 
-      if (!this.fragmentsManager.initialized) {
-        console.warn('FragmentsManager may not be fully initialized yet');
+      while (!this.fragmentsManager.initialized && (Date.now() - startTime) < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+
+      if (this.fragmentsManager.initialized) {
+        console.log('FragmentsManager worker initialized successfully');
+      } else {
+        console.warn('FragmentsManager worker may not be fully initialized after waiting');
       }
     } catch (error) {
       console.error('Error initializing FragmentsManager:', error);
