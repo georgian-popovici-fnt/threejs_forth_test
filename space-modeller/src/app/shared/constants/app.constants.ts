@@ -17,7 +17,7 @@ export const FILE_VALIDATION = {
  */
 export const TIMING = {
   /** Default notification duration in milliseconds */
-  NOTIFICATION_DURATION: 5000,
+  NOTIFICATION_DURATION: 3000,
   /** Throttle interval for fragment updates in milliseconds */
   FRAGMENT_UPDATE_THROTTLE: 100,
   /** Worker initialization timeout in milliseconds */

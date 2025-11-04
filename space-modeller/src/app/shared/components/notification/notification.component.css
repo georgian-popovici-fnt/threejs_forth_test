@@ -14,13 +14,13 @@
 .notification {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 320px;
-  max-width: 480px;
-  padding: 16px;
+  gap: 8px;
+  min-width: 240px;
+  max-width: 360px;
+  padding: 10px 12px;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
   animation: slideIn 0.3s ease-out;
 }
@@ -39,50 +39,50 @@
 /* Notification icon */
 .notification-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 12px;
 }
 
 /* Notification message */
 .notification-message {
   flex: 1;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   color: #333;
 }
 
 /* Close button */
 .notification-close {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: #666;
+  border-radius: 3px;
+  color: #999;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  font-size: 16px;
+  transition: all 0.2s ease;
+  font-size: 14px;
   padding: 0;
 }
 
 .notification-close:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #333;
+  background-color: rgba(0, 0, 0, 0.08);
+  color: #555;
 }
 
 /* Success notification */
 .notification-success {
-  border-left: 4px solid #10b981;
+  border-left: 3px solid #10b981;
 }
 
 .notification-success .notification-icon {
@@ -92,7 +92,7 @@
 
 /* Error notification */
 .notification-error {
-  border-left: 4px solid #ef4444;
+  border-left: 3px solid #ef4444;
 }
 
 .notification-error .notification-icon {
@@ -102,7 +102,7 @@
 
 /* Warning notification */
 .notification-warning {
-  border-left: 4px solid #f59e0b;
+  border-left: 3px solid #f59e0b;
 }
 
 .notification-warning .notification-icon {
@@ -112,7 +112,7 @@
 
 /* Info notification */
 .notification-info {
-  border-left: 4px solid #3b82f6;
+  border-left: 3px solid #3b82f6;
 }
 
 .notification-info .notification-icon {
