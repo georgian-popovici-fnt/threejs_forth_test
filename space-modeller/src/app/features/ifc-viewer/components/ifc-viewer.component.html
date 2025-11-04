@@ -42,6 +42,12 @@
     <div class="sidebar-content">
       <h2 class="sidebar-title">Tools</h2>
 
+      <!-- Camera Selector -->
+      <app-camera-selector
+        [selectedMode]="currentCameraMode()"
+        (modeChange)="onCameraModeChange($event)"
+      ></app-camera-selector>
+
       <!-- File Import -->
       <label class="sidebar-button" for="ifc-file-input">
         <svg

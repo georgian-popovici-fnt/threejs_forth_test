@@ -5,6 +5,7 @@ import Stats from 'stats.js';
 import * as OBC from '@thatopen/components';
 import * as FRAGS from '@thatopen/fragments';
 import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/viewer-config.model';
+import { CameraMode } from '../../../shared/models/camera-mode.model';
 import { TIMING, VIEWER } from '../../../shared/constants/app.constants';
 import { LoggerService } from '../../../shared/services/logger.service';
 import { environment } from '../../../../environments/environment';
@@ -22,7 +23,10 @@ export class IfcViewerService {
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
-  private camera: THREE.PerspectiveCamera | null = null;
+  private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera | null = null;
+  private perspectiveCamera: THREE.PerspectiveCamera | null = null;
+  private orthographicCamera: THREE.OrthographicCamera | null = null;
+  private currentCameraMode: CameraMode = CameraMode.PERSPECTIVE_3D;
   private controls: OrbitControls | null = null;
   private components: OBC.Components | null = null;
   private fragmentsManager: OBC.FragmentsManager | null = null;
@@ -59,18 +63,8 @@ export class IfcViewerService {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(this.config.backgroundColor);
 
-    // Create camera
-    this.camera = new THREE.PerspectiveCamera(
-      this.config.camera.fov,
-      canvas.clientWidth / canvas.clientHeight,
-      this.config.camera.near,
-      this.config.camera.far
-    );
-    this.camera.position.set(
-      this.config.camera.position.x,
-      this.config.camera.position.y,
-      this.config.camera.position.z
-    );
+    // Initialize both perspective and orthographic cameras
+    this.initializeCameras(canvas);
 
     // Initialize @thatopen/components
     this.components = new OBC.Components();
@@ -132,6 +126,122 @@ export class IfcViewerService {
     );
 
     this.controls.update();
+  }
+
+  /**
+   * Initialize both perspective and orthographic cameras
+   */
+  private initializeCameras(canvas: HTMLCanvasElement): void {
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+
+    // Create perspective camera (default)
+    this.perspectiveCamera = new THREE.PerspectiveCamera(
+      this.config.camera.fov,
+      aspect,
+      this.config.camera.near,
+      this.config.camera.far
+    );
+    this.perspectiveCamera.position.set(
+      this.config.camera.position.x,
+      this.config.camera.position.y,
+      this.config.camera.position.z
+    );
+
+    // Create orthographic camera
+    const frustumSize = 20;
+    this.orthographicCamera = new THREE.OrthographicCamera(
+      (-frustumSize * aspect) / 2,
+      (frustumSize * aspect) / 2,
+      frustumSize / 2,
+      -frustumSize / 2,
+      this.config.camera.near,
+      this.config.camera.far
+    );
+    this.orthographicCamera.position.set(
+      this.config.camera.position.x,
+      this.config.camera.position.y,
+      this.config.camera.position.z
+    );
+
+    // Set active camera to perspective by default
+    this.camera = this.perspectiveCamera;
+  }
+
+  /**
+   * Switch between camera modes (3D perspective and 2D orthographic views)
+   */
+  setCameraMode(mode: CameraMode): void {
+    if (!this.perspectiveCamera || !this.orthographicCamera) {
+      this.logger.warn('Cameras not initialized');
+      return;
+    }
+
+    this.currentCameraMode = mode;
+
+    // Store current camera position and target
+    const currentPosition = this.camera?.position.clone() || new THREE.Vector3();
+    const currentTarget = this.controls?.target.clone() || new THREE.Vector3();
+
+    switch (mode) {
+      case CameraMode.PERSPECTIVE_3D:
+        this.camera = this.perspectiveCamera;
+        // Restore or set default 3D position
+        this.camera.position.copy(currentPosition);
+        break;
+
+      case CameraMode.ORTHOGRAPHIC_TOP:
+        this.camera = this.orthographicCamera;
+        // Top view: look down from positive Y
+        this.camera.position.set(currentTarget.x, currentTarget.y + 50, currentTarget.z);
+        this.camera.up.set(0, 0, -1); // Set up vector for proper orientation
+        break;
+
+      case CameraMode.ORTHOGRAPHIC_FRONT:
+        this.camera = this.orthographicCamera;
+        // Front view: look from positive Z
+        this.camera.position.set(currentTarget.x, currentTarget.y, currentTarget.z + 50);
+        this.camera.up.set(0, 1, 0); // Standard up vector
+        break;
+
+      case CameraMode.ORTHOGRAPHIC_SIDE:
+        this.camera = this.orthographicCamera;
+        // Side view: look from positive X
+        this.camera.position.set(currentTarget.x + 50, currentTarget.y, currentTarget.z);
+        this.camera.up.set(0, 1, 0); // Standard up vector
+        break;
+    }
+
+    // Update controls to use the new camera
+    if (this.controls && this.canvas) {
+      this.controls.dispose();
+      this.controls = new OrbitControls(this.camera, this.canvas);
+      this.controls.enableDamping = true;
+      this.controls.dampingFactor = 0.05;
+      this.controls.target.copy(currentTarget);
+      
+      // For orthographic views, disable rotation to keep the view locked
+      if (mode !== CameraMode.PERSPECTIVE_3D) {
+        this.controls.enableRotate = false;
+      } else {
+        this.controls.enableRotate = true;
+      }
+      
+      this.controls.update();
+    }
+
+    // Update fragment model camera if model is loaded
+    if (this.currentModel && this.camera) {
+      this.currentModel.useCamera(this.camera);
+    }
+
+    this.logger.info(`Camera mode changed to: ${mode}`);
+  }
+
+  /**
+   * Get current camera mode
+   */
+  getCameraMode(): CameraMode {
+    return this.currentCameraMode;
   }
 
   /**
@@ -276,9 +386,20 @@ export class IfcViewerService {
 
     const width = this.canvas.clientWidth;
     const height = this.canvas.clientHeight;
+    const aspect = width / height;
 
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    // Update camera based on type
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      this.camera.aspect = aspect;
+      this.camera.updateProjectionMatrix();
+    } else if (this.camera instanceof THREE.OrthographicCamera) {
+      const frustumSize = 20;
+      this.camera.left = (-frustumSize * aspect) / 2;
+      this.camera.right = (frustumSize * aspect) / 2;
+      this.camera.top = frustumSize / 2;
+      this.camera.bottom = -frustumSize / 2;
+      this.camera.updateProjectionMatrix();
+    }
 
     this.renderer.setSize(width, height, false);
   }
@@ -487,10 +608,28 @@ export class IfcViewerService {
     // Calculate the maximum dimension
     const maxDim = Math.max(size.x, size.y, size.z);
     
-    // Calculate camera distance to fit the model in view
-    // Using FOV and desired framing (1.5x for some padding)
-    const fov = this.camera.fov * (Math.PI / 180); // Convert to radians
-    const cameraDistance = (maxDim / 2) / Math.tan(fov / 2) * 1.5;
+    let cameraDistance: number;
+    
+    // Calculate camera distance based on camera type
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      // Using FOV and desired framing (1.5x for some padding)
+      const fov = this.camera.fov * (Math.PI / 180); // Convert to radians
+      cameraDistance = (maxDim / 2) / Math.tan(fov / 2) * 1.5;
+    } else {
+      // For orthographic camera, use a fixed distance
+      cameraDistance = maxDim * 1.5;
+      
+      // Update orthographic camera frustum to fit the model
+      if (this.camera instanceof THREE.OrthographicCamera && this.canvas) {
+        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+        const frustumSize = maxDim * 1.2;
+        this.camera.left = (-frustumSize * aspect) / 2;
+        this.camera.right = (frustumSize * aspect) / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = -frustumSize / 2;
+        this.camera.updateProjectionMatrix();
+      }
+    }
 
     // Position camera at an angle that shows the model well
     const direction = new THREE.Vector3(1, 1, 1).normalize();
