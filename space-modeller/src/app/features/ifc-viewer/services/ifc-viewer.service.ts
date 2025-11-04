@@ -179,22 +179,34 @@ export class IfcViewerService {
       throw error;
     }
 
-    // Listen for new fragments
+    // Listen for new fragments (this may not always fire, so we have fallback in loadIfcFile)
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
 
-      console.log('Fragments loaded, adding to scene:', model.name || model.uuid);
+      console.log('onFragmentsLoaded event fired - adding to scene');
 
-      // Add to scene
-      this.scene.add(model.group);
+      // @ts-ignore - group property exists at runtime but not in type definition  
+      const modelGroup = model.group || model.object;
+      
+      if (!modelGroup) {
+        console.warn('Model has no renderable group/object');
+        return;
+      }
+      
+      // Add to scene if not already added
+      if (!this.scene.children.includes(modelGroup)) {
+        this.scene.add(modelGroup);
+      }
 
       // Store current model
       this.currentModel = model;
 
-      // Fit camera to view the model
-      this.fitCameraToModel(model.group);
+      // Fit camera to view the model after a short delay
+      setTimeout(() => {
+        this.fitCameraToModel(modelGroup);
+      }, 200);
 
-      console.log('Model added to scene successfully');
+      console.log('Model added to scene successfully via event');
     });
   }
 
@@ -333,6 +345,25 @@ export class IfcViewerService {
       });
 
       console.log('IFC file loaded successfully, model:', model);
+      
+      // Manually add model to scene as the onFragmentsLoaded event may not fire
+      // @ts-ignore - group property exists at runtime but not in type definition
+      const modelGroup = model.group || model.object;
+      
+      if (modelGroup && this.scene) {
+        // Check if model was already added by onFragmentsLoaded event
+        if (!this.scene.children.includes(modelGroup)) {
+          console.log('Manually adding model to scene (event did not fire)');
+          this.scene.add(modelGroup);
+          this.currentModel = model;
+          
+          // Defer camera fitting to allow geometry to populate
+          setTimeout(() => {
+            this.fitCameraToModel(modelGroup);
+          }, 200);
+        }
+      }
+      
       return model;
     } catch (error) {
       console.error('Error loading IFC file:', error);
@@ -343,15 +374,22 @@ export class IfcViewerService {
   /**
    * Fit camera to view the entire model
    */
-  private fitCameraToModel(group: THREE.Group): void {
+  private fitCameraToModel(object: THREE.Object3D): void {
     if (!this.camera || !this.controls) return;
 
     // Compute bounding box of the model
-    const box = new THREE.Box3().setFromObject(group);
+    const box = new THREE.Box3().setFromObject(object);
     
     // Check if bounding box is valid
     if (box.isEmpty()) {
-      console.warn('Model bounding box is empty, cannot fit camera');
+      console.warn('Model bounding box is empty, using default camera distance');
+      // Position camera at a reasonable default distance
+      const defaultDistance = 20;
+      const direction = new THREE.Vector3(1, 1, 1).normalize();
+      const cameraPosition = direction.multiplyScalar(defaultDistance);
+      this.camera.position.copy(cameraPosition);
+      this.controls.target.set(0, 0, 0);
+      this.controls.update();
       return;
     }
 
