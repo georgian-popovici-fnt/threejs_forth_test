@@ -15,6 +15,10 @@ import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/view
 export class IfcViewerService {
   private readonly ngZone = inject(NgZone);
 
+  // Worker initialization configuration
+  private static readonly WORKER_INIT_MAX_WAIT_MS = 5000; // 5 seconds
+  private static readonly WORKER_INIT_POLL_INTERVAL_MS = 100; // Check every 100ms
+
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
@@ -154,12 +158,15 @@ export class IfcViewerService {
 
       // Wait for the worker to be ready (poll with timeout)
       // The init() method is synchronous but worker loading is async
-      const maxWaitTime = 5000; // 5 seconds
-      const pollInterval = 100; // Check every 100ms
       const startTime = Date.now();
 
-      while (!this.fragmentsManager.initialized && (Date.now() - startTime) < maxWaitTime) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      while (
+        !this.fragmentsManager.initialized &&
+        Date.now() - startTime < IfcViewerService.WORKER_INIT_MAX_WAIT_MS
+      ) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, IfcViewerService.WORKER_INIT_POLL_INTERVAL_MS)
+        );
       }
 
       if (this.fragmentsManager.initialized) {
@@ -312,6 +319,8 @@ export class IfcViewerService {
       console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
       console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
 
+      // Load IFC with coordinate transformation enabled (true)
+      // This transforms the model coordinates to origin for better viewport positioning
       const model = await this.ifcLoader.load(buffer, true, fileName, {
         processData: {
           progressCallback: (progress: number) => {

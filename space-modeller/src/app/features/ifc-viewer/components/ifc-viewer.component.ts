@@ -54,6 +54,7 @@ export class IfcViewerComponent implements OnDestroy {
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.ifc')) {
+      // TODO: Replace alert() with a proper notification service/toast component
       alert('Please select a valid IFC file');
       return;
     }
@@ -76,14 +77,17 @@ export class IfcViewerComponent implements OnDestroy {
 
       if (model) {
         console.log(`Successfully loaded: ${file.name}`);
+        // TODO: Replace alert() with a proper notification service/toast component
         alert(`Successfully loaded: ${file.name}`);
       } else {
         console.error('Model loading returned null');
+        // TODO: Replace alert() with a proper notification service/toast component
         alert('Error: Model loading failed. Check console for details.');
       }
     } catch (error) {
       console.error('Error loading IFC file:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // TODO: Replace alert() with a proper notification service/toast component
       alert(`Error loading IFC file: ${errorMessage}\n\nCheck console for details.`);
     } finally {
       this.isLoading.set(false);
