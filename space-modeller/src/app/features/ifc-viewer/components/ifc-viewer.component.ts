@@ -10,6 +10,15 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
+import { NotificationService } from '../../../shared/services/notification.service';
+import { LoggerService } from '../../../shared/services/logger.service';
+import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shared/constants/app.constants';
+import {
+  sanitizeFileName,
+  hasAllowedExtension,
+  readFileAsArrayBuffer,
+  getFileNameWithoutExtension,
+} from '../../../shared/utils/file.utils';
 
 /**
  * IFC Viewer Component
@@ -25,6 +34,8 @@ import { IfcViewerService } from '../services/ifc-viewer.service';
 })
 export class IfcViewerComponent implements OnDestroy {
   private readonly viewerService = inject(IfcViewerService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly logger = inject(LoggerService);
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
   protected readonly isLoading = signal<boolean>(false);
@@ -53,42 +64,49 @@ export class IfcViewerComponent implements OnDestroy {
 
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.ifc')) {
-      // TODO: Replace alert() with a proper notification service/toast component
-      alert('Please select a valid IFC file');
+    // Sanitize filename
+    const sanitizedName = sanitizeFileName(file.name);
+
+    // Validate file extension
+    if (!hasAllowedExtension(sanitizedName, FILE_VALIDATION.ALLOWED_EXTENSIONS)) {
+      this.notificationService.warning(ERROR_MESSAGES.INVALID_FILE_TYPE);
+      return;
+    }
+
+    // Validate file size
+    if (file.size > FILE_VALIDATION.MAX_FILE_SIZE) {
+      this.notificationService.error(ERROR_MESSAGES.FILE_TOO_LARGE);
       return;
     }
 
     this.isLoading.set(true);
-    this.currentFileName.set(file.name);
+    this.currentFileName.set(sanitizedName);
 
     try {
-      console.log(`Starting to load file: ${file.name}`);
+      this.logger.info(`Starting to load file: ${sanitizedName}`);
 
-      // Read file as ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      // Read file as ArrayBuffer using utility
+      const uint8Array = await readFileAsArrayBuffer(file);
 
-      console.log(`File read successfully, size: ${uint8Array.byteLength} bytes`);
+      this.logger.debug(`File read successfully, size: ${uint8Array.byteLength} bytes`);
 
       // Load IFC file
-      const modelName = file.name.replace('.ifc', '');
+      const modelName = getFileNameWithoutExtension(sanitizedName);
       const model = await this.viewerService.loadIfcFile(uint8Array, modelName);
 
       if (model) {
-        console.log(`Successfully loaded: ${file.name}`);
-        // TODO: Replace alert() with a proper notification service/toast component
-        alert(`Successfully loaded: ${file.name}`);
+        this.logger.info(`Successfully loaded: ${sanitizedName}`);
+        this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(sanitizedName));
       } else {
-        console.error('Model loading returned null');
-        // TODO: Replace alert() with a proper notification service/toast component
-        alert('Error: Model loading failed. Check console for details.');
+        this.logger.error('Model loading returned null');
+        this.notificationService.error(`${ERROR_MESSAGES.LOAD_FAILED}. Check console for details.`);
       }
     } catch (error) {
-      console.error('Error loading IFC file:', error);
+      this.logger.error('Error loading IFC file:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      // TODO: Replace alert() with a proper notification service/toast component
-      alert(`Error loading IFC file: ${errorMessage}\n\nCheck console for details.`);
+      this.notificationService.error(
+        `Error loading IFC file: ${errorMessage}. Check console for details.`
+      );
     } finally {
       this.isLoading.set(false);
       // Reset input to allow reloading the same file
@@ -103,14 +121,20 @@ export class IfcViewerComponent implements OnDestroy {
     const currentModel = this.viewerService.getCurrentModel();
 
     if (!currentModel) {
-      alert('No model loaded. Please load an IFC file first.');
+      this.notificationService.warning(ERROR_MESSAGES.NO_MODEL_LOADED);
       return;
     }
 
-    const fileName = this.currentFileName() || 'model';
-    const baseName = fileName.replace('.ifc', '');
+    try {
+      const fileName = this.currentFileName() || 'model';
+      const baseName = getFileNameWithoutExtension(sanitizeFileName(fileName));
 
-    await this.viewerService.exportFragments(baseName);
+      await this.viewerService.exportFragments(baseName);
+      this.notificationService.success(SUCCESS_MESSAGES.FILE_EXPORTED(baseName));
+    } catch (error) {
+      this.logger.error('Error exporting fragments:', error);
+      this.notificationService.error(ERROR_MESSAGES.EXPORT_FAILED);
+    }
   }
 
   /**

@@ -1,0 +1,135 @@
+/* Notification container - fixed position at top right */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+/* Individual notification */
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 320px;
+  max-width: 480px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Notification icon */
+.notification-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Notification message */
+.notification-message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* Close button */
+.notification-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 16px;
+  padding: 0;
+}
+
+.notification-close:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+/* Success notification */
+.notification-success {
+  border-left: 4px solid #10b981;
+}
+
+.notification-success .notification-icon {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+/* Error notification */
+.notification-error {
+  border-left: 4px solid #ef4444;
+}
+
+.notification-error .notification-icon {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* Warning notification */
+.notification-warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.notification-warning .notification-icon {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+/* Info notification */
+.notification-info {
+  border-left: 4px solid #3b82f6;
+}
+
+.notification-info .notification-icon {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 640px) {
+  .notification-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+
+  .notification {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
