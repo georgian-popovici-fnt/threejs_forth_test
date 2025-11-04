@@ -18,6 +18,7 @@ export class IfcViewerService {
   // Worker initialization configuration
   private static readonly WORKER_INIT_MAX_WAIT_MS = 5000; // 5 seconds
   private static readonly WORKER_INIT_POLL_INTERVAL_MS = 100; // Check every 100ms
+  private static readonly CAMERA_FIT_DELAY_MS = 200; // Delay for camera fitting to allow geometry to populate
 
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -179,19 +180,34 @@ export class IfcViewerService {
       throw error;
     }
 
-    // Listen for new fragments
+    // Listen for new fragments (this may not always fire, so we have fallback in loadIfcFile)
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
 
-      console.log('Fragments loaded, adding to scene:', model.name || model.uuid);
+      console.log('onFragmentsLoaded event fired - adding to scene');
 
-      // Add to scene
-      this.scene.add(model.group);
+      // Using type assertion as group property exists at runtime but not in type definitions  
+      const modelGroup = (model as any).group || (model as any).object;
+      
+      if (!modelGroup) {
+        console.warn('Model has no renderable group/object');
+        return;
+      }
+      
+      // Add to scene if not already added
+      if (!this.scene.children.includes(modelGroup)) {
+        this.scene.add(modelGroup);
+      }
 
       // Store current model
       this.currentModel = model;
 
-      console.log('Model added to scene successfully');
+      // Fit camera to view the model after a short delay
+      setTimeout(() => {
+        this.fitCameraToModel(modelGroup);
+      }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+
+      console.log('Model added to scene successfully via event');
     });
   }
 
@@ -330,11 +346,88 @@ export class IfcViewerService {
       });
 
       console.log('IFC file loaded successfully, model:', model);
+      
+      // Manually add model to scene as the onFragmentsLoaded event may not fire
+      // Using type assertion as group property exists at runtime but not in type definitions
+      const modelGroup = (model as any).group || (model as any).object;
+      
+      if (modelGroup && this.scene) {
+        // Check if model was already added by onFragmentsLoaded event
+        if (!this.scene.children.includes(modelGroup)) {
+          console.log('Manually adding model to scene (event did not fire)');
+          this.scene.add(modelGroup);
+          this.currentModel = model;
+          
+          // Defer camera fitting to allow geometry to populate
+          setTimeout(() => {
+            this.fitCameraToModel(modelGroup);
+          }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+        }
+      }
+      
       return model;
     } catch (error) {
       console.error('Error loading IFC file:', error);
       throw error; // Re-throw to propagate to component
     }
+  }
+
+  /**
+   * Fit camera to view the entire model
+   */
+  private fitCameraToModel(object: THREE.Object3D): void {
+    if (!this.camera || !this.controls) return;
+
+    // Compute bounding box of the model
+    const box = new THREE.Box3().setFromObject(object);
+    
+    // Check if bounding box is valid
+    if (box.isEmpty()) {
+      console.warn('Model bounding box is empty, using default camera distance');
+      // Position camera at a reasonable default distance
+      const defaultDistance = 20;
+      const direction = new THREE.Vector3(1, 1, 1).normalize();
+      const cameraPosition = direction.multiplyScalar(defaultDistance);
+      this.camera.position.copy(cameraPosition);
+      this.controls.target.set(0, 0, 0);
+      this.controls.update();
+      return;
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    console.log('Model bounding box:', { 
+      min: box.min, 
+      max: box.max, 
+      size, 
+      center 
+    });
+
+    // Calculate the maximum dimension
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Calculate camera distance to fit the model in view
+    // Using FOV and desired framing (1.5x for some padding)
+    const fov = this.camera.fov * (Math.PI / 180); // Convert to radians
+    const cameraDistance = (maxDim / 2) / Math.tan(fov / 2) * 1.5;
+
+    // Position camera at an angle that shows the model well
+    const direction = new THREE.Vector3(1, 1, 1).normalize();
+    const cameraPosition = center.clone().add(direction.multiplyScalar(cameraDistance));
+
+    // Update camera position
+    this.camera.position.copy(cameraPosition);
+
+    // Update controls target to model center
+    this.controls.target.copy(center);
+    this.controls.update();
+
+    console.log('Camera fitted to model:', {
+      position: this.camera.position,
+      target: this.controls.target,
+      distance: cameraDistance
+    });
   }
 
   /**
