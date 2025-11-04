@@ -13,6 +13,12 @@ import { IfcViewerService } from '../services/ifc-viewer.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { LoggerService } from '../../../shared/services/logger.service';
 import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shared/constants/app.constants';
+import {
+  sanitizeFileName,
+  hasAllowedExtension,
+  readFileAsArrayBuffer,
+  getFileNameWithoutExtension,
+} from '../../../shared/utils/file.utils';
 
 /**
  * IFC Viewer Component
@@ -58,8 +64,11 @@ export class IfcViewerComponent implements OnDestroy {
 
     if (!file) return;
 
+    // Sanitize filename
+    const sanitizedName = sanitizeFileName(file.name);
+
     // Validate file extension
-    if (!FILE_VALIDATION.ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext))) {
+    if (!hasAllowedExtension(sanitizedName, FILE_VALIDATION.ALLOWED_EXTENSIONS)) {
       this.notificationService.warning(ERROR_MESSAGES.INVALID_FILE_TYPE);
       return;
     }
@@ -71,24 +80,23 @@ export class IfcViewerComponent implements OnDestroy {
     }
 
     this.isLoading.set(true);
-    this.currentFileName.set(file.name);
+    this.currentFileName.set(sanitizedName);
 
     try {
-      this.logger.info(`Starting to load file: ${file.name}`);
+      this.logger.info(`Starting to load file: ${sanitizedName}`);
 
-      // Read file as ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      // Read file as ArrayBuffer using utility
+      const uint8Array = await readFileAsArrayBuffer(file);
 
       this.logger.debug(`File read successfully, size: ${uint8Array.byteLength} bytes`);
 
       // Load IFC file
-      const modelName = file.name.replace('.ifc', '');
+      const modelName = getFileNameWithoutExtension(sanitizedName);
       const model = await this.viewerService.loadIfcFile(uint8Array, modelName);
 
       if (model) {
-        this.logger.info(`Successfully loaded: ${file.name}`);
-        this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(file.name));
+        this.logger.info(`Successfully loaded: ${sanitizedName}`);
+        this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(sanitizedName));
       } else {
         this.logger.error('Model loading returned null');
         this.notificationService.error(`${ERROR_MESSAGES.LOAD_FAILED}. Check console for details.`);
@@ -119,7 +127,7 @@ export class IfcViewerComponent implements OnDestroy {
 
     try {
       const fileName = this.currentFileName() || 'model';
-      const baseName = fileName.replace('.ifc', '');
+      const baseName = getFileNameWithoutExtension(sanitizeFileName(fileName));
 
       await this.viewerService.exportFragments(baseName);
       this.notificationService.success(SUCCESS_MESSAGES.FILE_EXPORTED(baseName));
