@@ -34,6 +34,8 @@ export class IfcViewerService {
   private resizeObserver: ResizeObserver | null = null;
   private config: ViewerConfig = DEFAULT_VIEWER_CONFIG;
   private currentModel: FRAGS.FragmentsModel | null = null;
+  private lastUpdateTime: number = 0;
+  private static readonly UPDATE_THROTTLE_MS = 100; // Throttle updates to max 10 times per second
 
   /**
    * Initialize the viewer with a canvas element
@@ -305,11 +307,15 @@ export class IfcViewerService {
       this.controls.update();
     }
 
-    // Update FragmentsModels for dynamic LOD and culling
-    // This is called asynchronously and won't block the render loop
-    if (this.fragmentsManager?.core) {
-      // Update is async but we don't await it to avoid blocking
-      this.fragmentsManager.core.update().catch(err => console.warn('FragmentsModels update error:', err));
+    // Update FragmentsModels for dynamic LOD and culling (throttled to avoid excessive calls)
+    // Only update if enough time has passed since last update
+    const now = Date.now();
+    if (this.fragmentsManager?.core && now - this.lastUpdateTime >= IfcViewerService.UPDATE_THROTTLE_MS) {
+      this.lastUpdateTime = now;
+      // Update is async but we don't await it to avoid blocking the render loop
+      this.fragmentsManager.core.update().catch(err => 
+        console.warn('FragmentsModels update error:', err)
+      );
     }
 
     // Render scene
@@ -356,10 +362,22 @@ export class IfcViewerService {
 
       // Set camera for dynamic tile loading - required for FragmentsModel to load geometry
       if (this.camera) {
-        model.useCamera(this.camera);
-        // Force initial update to load visible tiles
-        await this.fragmentsManager.core.update(true);
-        console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
+        try {
+          model.useCamera(this.camera);
+          // Force initial update to load visible tiles
+          await this.fragmentsManager.core.update(true);
+          console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
+          
+          if (model.tiles.size === 0) {
+            console.warn('No tiles loaded after update. Model may not have geometry or geometry may still be loading asynchronously.');
+          }
+        } catch (error) {
+          console.error('Error setting up model camera and loading tiles:', error);
+          console.warn('Model will be added to scene but geometry may not be visible. Try reloading the file.');
+          // Continue execution - model will be added to scene even if tile loading fails
+        }
+      } else {
+        console.warn('No camera available - model tiles cannot be loaded. Geometry will not be visible.');
       }
       
       // Add model to scene
