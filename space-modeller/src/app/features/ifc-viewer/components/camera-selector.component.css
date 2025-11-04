@@ -1,0 +1,51 @@
+.camera-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.camera-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: default;
+}
+
+.camera-label svg {
+  flex-shrink: 0;
+}
+
+.camera-select {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.camera-select:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.camera-select:focus {
+  outline: none;
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+}
+
+.camera-select option {
+  background-color: #1a1d23;
+  color: #fff;
+  padding: 0.5rem;
+}

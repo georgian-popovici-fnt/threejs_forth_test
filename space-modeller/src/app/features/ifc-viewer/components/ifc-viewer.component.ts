@@ -20,7 +20,9 @@ import {
   getFileNameWithoutExtension,
 } from '../../../shared/utils/file.utils';
 import { IfcClass } from '../../../shared/models/ifc-class.model';
+import { CameraMode } from '../../../shared/models/camera-mode.model';
 import { IfcClassFilterComponent } from './ifc-class-filter.component';
+import { CameraSelectorComponent } from './camera-selector.component';
 
 /**
  * IFC Viewer Component
@@ -29,7 +31,7 @@ import { IfcClassFilterComponent } from './ifc-class-filter.component';
 @Component({
   selector: 'app-ifc-viewer',
   standalone: true,
-  imports: [CommonModule, IfcClassFilterComponent],
+  imports: [CommonModule, IfcClassFilterComponent, CameraSelectorComponent],
   templateUrl: './ifc-viewer.component.html',
   styleUrl: './ifc-viewer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +46,7 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly currentFileName = signal<string>('');
   protected readonly isSidebarCollapsed = signal<boolean>(false);
   protected readonly ifcClasses = signal<IfcClass[]>([]);
+  protected readonly currentCameraMode = signal<CameraMode>(CameraMode.PERSPECTIVE_3D);
 
   constructor() {
     afterNextRender(() => {
@@ -215,6 +218,20 @@ export class IfcViewerComponent implements OnDestroy {
     } catch (error) {
       this.logger.error('Error changing class visibility:', error);
       this.notificationService.error('Failed to change class visibility');
+    }
+  }
+
+  /**
+   * Handle camera mode change
+   */
+  protected onCameraModeChange(mode: CameraMode): void {
+    try {
+      this.viewerService.setCameraMode(mode);
+      this.currentCameraMode.set(mode);
+      this.logger.info(`Camera mode changed to: ${mode}`);
+    } catch (error) {
+      this.logger.error('Error changing camera mode:', error);
+      this.notificationService.error('Failed to change camera mode');
     }
   }
 
