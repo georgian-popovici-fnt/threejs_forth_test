@@ -369,6 +369,15 @@ export class IfcViewerService {
       console.log('Forcing FragmentsModels update...');
       await this.fragmentsManager.core.update(true);
       console.log('Update complete. Tiles now:', model.tiles.size);
+
+      // Set camera for dynamic tile loading
+      if (this.camera) {
+        console.log('Setting camera on model for tile loading...');
+        model.useCamera(this.camera);
+        // Force another update after setting camera
+        await this.fragmentsManager.core.update(true);
+        console.log('After camera set, tiles:', model.tiles.size);
+      }
       
       // Manually add model to scene as the onFragmentsLoaded event may not fire
       // Use the model.object property which is the THREE.Object3D container
