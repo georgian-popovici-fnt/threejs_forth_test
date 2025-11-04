@@ -15,6 +15,10 @@ import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/view
 export class IfcViewerService {
   private readonly ngZone = inject(NgZone);
 
+  // Worker initialization configuration
+  private static readonly WORKER_INIT_MAX_WAIT_MS = 5000; // 5 seconds
+  private static readonly WORKER_INIT_POLL_INTERVAL_MS = 100; // Check every 100ms
+
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
@@ -88,6 +92,10 @@ export class IfcViewerService {
     // Initialize IFC Loader
     await this.initializeIfcLoader();
 
+    // Initialize the Components system
+    this.components.init();
+    console.log('Components system initialized');
+
     // Initialize stats if enabled
     if (this.config.showStats) {
       this.initializeStats();
@@ -140,20 +148,50 @@ export class IfcViewerService {
   private async initializeFragmentsManager(): Promise<void> {
     if (!this.components) return;
 
-    this.fragmentsManager = new OBC.FragmentsManager(this.components);
+    // Use components.get() to properly instantiate and register the component
+    this.fragmentsManager = this.components.get(OBC.FragmentsManager);
 
     // Initialize worker with URL
-    this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
+    try {
+      this.fragmentsManager.init(this.config.fragmentsWorkerUrl);
+      console.log('FragmentsManager.init() called with worker URL:', this.config.fragmentsWorkerUrl);
+
+      // Wait for the worker to be ready (poll with timeout)
+      // The init() method is synchronous but worker loading is async
+      const startTime = Date.now();
+
+      while (
+        !this.fragmentsManager.initialized &&
+        Date.now() - startTime < IfcViewerService.WORKER_INIT_MAX_WAIT_MS
+      ) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, IfcViewerService.WORKER_INIT_POLL_INTERVAL_MS)
+        );
+      }
+
+      if (this.fragmentsManager.initialized) {
+        console.log('FragmentsManager worker initialized successfully');
+      } else {
+        console.warn('FragmentsManager worker may not be fully initialized after waiting');
+      }
+    } catch (error) {
+      console.error('Error initializing FragmentsManager:', error);
+      throw error;
+    }
 
     // Listen for new fragments
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
+
+      console.log('Fragments loaded, adding to scene:', model.name || model.uuid);
 
       // Add to scene
       this.scene.add(model.group);
 
       // Store current model
       this.currentModel = model;
+
+      console.log('Model added to scene successfully');
     });
   }
 
@@ -163,7 +201,8 @@ export class IfcViewerService {
   private async initializeIfcLoader(): Promise<void> {
     if (!this.components) return;
 
-    this.ifcLoader = new OBC.IfcLoader(this.components);
+    // Use components.get() to properly instantiate and register the component
+    this.ifcLoader = this.components.get(OBC.IfcLoader);
 
     // Configure WASM settings BEFORE setup to prevent auto-fetch
     this.ifcLoader.settings.wasm = {
@@ -176,6 +215,8 @@ export class IfcViewerService {
 
     // Setup with autoSetWasm disabled to use our configured path
     await this.ifcLoader.setup({ autoSetWasm: false });
+
+    console.log('IfcLoader initialized successfully');
   }
 
   /**
@@ -269,10 +310,18 @@ export class IfcViewerService {
       return null;
     }
 
-    try {
-      console.log(`Loading IFC file: ${fileName}`);
+    if (!this.fragmentsManager) {
+      console.error('FragmentsManager not initialized');
+      return null;
+    }
 
-      const model = await this.ifcLoader.load(buffer, false, fileName, {
+    try {
+      console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
+      console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
+
+      // Load IFC with coordinate transformation enabled (true)
+      // This transforms the model coordinates to origin for better viewport positioning
+      const model = await this.ifcLoader.load(buffer, true, fileName, {
         processData: {
           progressCallback: (progress: number) => {
             console.log(`Loading progress: ${(progress * 100).toFixed(1)}%`);
@@ -280,11 +329,11 @@ export class IfcViewerService {
         },
       });
 
-      console.log('IFC file loaded successfully');
+      console.log('IFC file loaded successfully, model:', model);
       return model;
     } catch (error) {
       console.error('Error loading IFC file:', error);
-      return null;
+      throw error; // Re-throw to propagate to component
     }
   }
 

@@ -54,6 +54,7 @@ export class IfcViewerComponent implements OnDestroy {
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.ifc')) {
+      // TODO: Replace alert() with a proper notification service/toast component
       alert('Please select a valid IFC file');
       return;
     }
@@ -62,18 +63,32 @@ export class IfcViewerComponent implements OnDestroy {
     this.currentFileName.set(file.name);
 
     try {
+      console.log(`Starting to load file: ${file.name}`);
+
       // Read file as ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
+      console.log(`File read successfully, size: ${uint8Array.byteLength} bytes`);
+
       // Load IFC file
       const modelName = file.name.replace('.ifc', '');
-      await this.viewerService.loadIfcFile(uint8Array, modelName);
+      const model = await this.viewerService.loadIfcFile(uint8Array, modelName);
 
-      console.log(`Successfully loaded: ${file.name}`);
+      if (model) {
+        console.log(`Successfully loaded: ${file.name}`);
+        // TODO: Replace alert() with a proper notification service/toast component
+        alert(`Successfully loaded: ${file.name}`);
+      } else {
+        console.error('Model loading returned null');
+        // TODO: Replace alert() with a proper notification service/toast component
+        alert('Error: Model loading failed. Check console for details.');
+      }
     } catch (error) {
       console.error('Error loading IFC file:', error);
-      alert('Error loading IFC file. Check console for details.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // TODO: Replace alert() with a proper notification service/toast component
+      alert(`Error loading IFC file: ${errorMessage}\n\nCheck console for details.`);
     } finally {
       this.isLoading.set(false);
       // Reset input to allow reloading the same file
