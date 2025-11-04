@@ -18,6 +18,7 @@ export class IfcViewerService {
   // Worker initialization configuration
   private static readonly WORKER_INIT_MAX_WAIT_MS = 5000; // 5 seconds
   private static readonly WORKER_INIT_POLL_INTERVAL_MS = 100; // Check every 100ms
+  private static readonly CAMERA_FIT_DELAY_MS = 200; // Delay for camera fitting to allow geometry to populate
 
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -185,8 +186,8 @@ export class IfcViewerService {
 
       console.log('onFragmentsLoaded event fired - adding to scene');
 
-      // @ts-ignore - group property exists at runtime but not in type definition  
-      const modelGroup = model.group || model.object;
+      // Using type assertion as group property exists at runtime but not in type definitions  
+      const modelGroup = (model as any).group || (model as any).object;
       
       if (!modelGroup) {
         console.warn('Model has no renderable group/object');
@@ -204,7 +205,7 @@ export class IfcViewerService {
       // Fit camera to view the model after a short delay
       setTimeout(() => {
         this.fitCameraToModel(modelGroup);
-      }, 200);
+      }, IfcViewerService.CAMERA_FIT_DELAY_MS);
 
       console.log('Model added to scene successfully via event');
     });
@@ -347,8 +348,8 @@ export class IfcViewerService {
       console.log('IFC file loaded successfully, model:', model);
       
       // Manually add model to scene as the onFragmentsLoaded event may not fire
-      // @ts-ignore - group property exists at runtime but not in type definition
-      const modelGroup = model.group || model.object;
+      // Using type assertion as group property exists at runtime but not in type definitions
+      const modelGroup = (model as any).group || (model as any).object;
       
       if (modelGroup && this.scene) {
         // Check if model was already added by onFragmentsLoaded event
@@ -360,7 +361,7 @@ export class IfcViewerService {
           // Defer camera fitting to allow geometry to populate
           setTimeout(() => {
             this.fitCameraToModel(modelGroup);
-          }, 200);
+          }, IfcViewerService.CAMERA_FIT_DELAY_MS);
         }
       }
       
