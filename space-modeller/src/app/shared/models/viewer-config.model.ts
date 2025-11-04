@@ -67,5 +67,6 @@ export const DEFAULT_VIEWER_CONFIG: ViewerConfig = {
 
   showStats: true,
 
-  fragmentsWorkerUrl: 'https://thatopen.github.io/engine_fragment/resources/worker.mjs',
+  // Use local worker file to avoid CORS issues
+  fragmentsWorkerUrl: '/assets/fragments/worker.mjs',
 };
