@@ -185,9 +185,16 @@ export class IfcViewerService {
       if (!this.scene) return;
 
       console.log('onFragmentsLoaded event fired - adding to scene');
+      console.log('Event model details:', {
+        modelId: model.modelId,
+        tiles: model.tiles,
+        tilesSize: model.tiles.size,
+        object: model.object,
+        objectChildren: model.object.children.length
+      });
 
-      // Using type assertion as group property exists at runtime but not in type definitions  
-      const modelGroup = (model as any).group || (model as any).object;
+      // Use the model.object property which is the THREE.Object3D container
+      const modelGroup = model.object;
       
       if (!modelGroup) {
         console.warn('Model has no renderable group/object');
@@ -334,6 +341,7 @@ export class IfcViewerService {
     try {
       console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
       console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
+      console.log('FragmentsManager list before load:', this.fragmentsManager.list.size);
 
       // Load IFC with coordinate transformation enabled (true)
       // This transforms the model coordinates to origin for better viewport positioning
@@ -345,11 +353,26 @@ export class IfcViewerService {
         },
       });
 
+      console.log('FragmentsManager list after load:', this.fragmentsManager.list.size);
+
       console.log('IFC file loaded successfully, model:', model);
+      console.log('Model details:', {
+        modelId: model.modelId,
+        tiles: model.tiles,
+        tilesSize: model.tiles.size,
+        object: model.object,
+        objectChildren: model.object.children.length,
+        box: model.box
+      });
+
+      // Force update to ensure tiles are loaded
+      console.log('Forcing FragmentsModels update...');
+      await this.fragmentsManager.core.update(true);
+      console.log('Update complete. Tiles now:', model.tiles.size);
       
       // Manually add model to scene as the onFragmentsLoaded event may not fire
-      // Using type assertion as group property exists at runtime but not in type definitions
-      const modelGroup = (model as any).group || (model as any).object;
+      // Use the model.object property which is the THREE.Object3D container
+      const modelGroup = model.object;
       
       if (modelGroup && this.scene) {
         // Check if model was already added by onFragmentsLoaded event
