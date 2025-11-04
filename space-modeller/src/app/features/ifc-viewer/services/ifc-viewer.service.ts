@@ -331,6 +331,33 @@ export class IfcViewerService {
   };
 
   /**
+   * Remove the previous model from the scene and dispose its resources
+   */
+  private removePreviousModel(): void {
+    if (!this.currentModel || !this.scene) {
+      return;
+    }
+
+    this.logger.info('Removing previous model from scene');
+
+    // Remove model object from scene
+    if (this.currentModel.object) {
+      this.scene.remove(this.currentModel.object);
+    }
+
+    // Dispose model resources
+    try {
+      this.currentModel.dispose();
+      this.logger.debug('Previous model disposed successfully');
+    } catch (error) {
+      this.logger.warn('Error disposing previous model:', error);
+    }
+
+    // Clear the reference
+    this.currentModel = null;
+  }
+
+  /**
    * Load an IFC file from a Uint8Array buffer
    */
   async loadIfcFile(
@@ -348,6 +375,9 @@ export class IfcViewerService {
     }
 
     try {
+      // Remove the previous model before loading a new one
+      this.removePreviousModel();
+
       this.logger.startPerformanceMark('ifc-load');
       this.logger.info(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
 
