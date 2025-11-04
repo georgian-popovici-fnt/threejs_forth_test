@@ -9,6 +9,22 @@ ERROR SecurityError: Failed to construct 'Worker': Script at 'https://thatopen.g
 
 This is a browser security restriction that prevents loading worker scripts from different origins.
 
+## Security Summary
+⚠️ **5 CodeQL alerts found** - All in third-party vendored library code
+
+The CodeQL scan identified 5 alerts for insecure randomness (`Math.random()`) in the `worker.mjs` file. These are **NOT** security issues introduced by this change:
+
+- These alerts exist in the original `@thatopen/fragments` library code
+- We are simply copying a third-party library file to serve it locally
+- The same security issues would exist when loading from the CDN
+- These should be reported to the upstream library maintainers
+- They are outside the scope of this fix
+
+**Our changes**: 
+- ✅ No new security vulnerabilities introduced
+- ✅ Only copied existing third-party library code
+- ✅ Application code changes are secure
+
 ## Solution
 Changed from using an external CDN URL to serving the worker file locally from the application's assets:
 
@@ -45,7 +61,7 @@ fragmentsWorkerUrl: '/assets/fragments/worker.mjs',
 A Node.js script that automatically copies the worker file from node_modules to public/assets after `npm install`.
 
 ## Files Changed
-- `public/assets/fragments/worker.mjs` - Added worker file
+- `public/assets/fragments/worker.mjs` - Added worker file (vendored from @thatopen/fragments)
 - `src/app/shared/models/viewer-config.model.ts` - Updated worker URL
 - `package.json` - Added postinstall script
 - `scripts/copy-worker.js` - Added copy script
@@ -79,3 +95,4 @@ dist/space-modeller/browser/assets/fragments/worker.mjs
 - The worker file is committed to version control
 - The worker file is included in production builds
 - No special configuration needed for deployment
+
