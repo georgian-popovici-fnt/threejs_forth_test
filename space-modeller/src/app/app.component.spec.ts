@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
 import { IfcViewerComponent } from './features/ifc-viewer/components/ifc-viewer.component';
 import { IfcViewerService } from './features/ifc-viewer/services/ifc-viewer.service';
+import { NotificationComponent } from './shared/components/notification/notification.component';
 
 describe('AppComponent', () => {
   let mockViewerService: jasmine.SpyObj<IfcViewerService>;
@@ -13,7 +14,7 @@ describe('AppComponent', () => {
     ]);
 
     await TestBed.configureTestingModule({
-      imports: [AppComponent, IfcViewerComponent],
+      imports: [AppComponent, IfcViewerComponent, NotificationComponent],
       providers: [{ provide: IfcViewerService, useValue: mockViewerService }],
     }).compileComponents();
   });

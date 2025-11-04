@@ -5,6 +5,7 @@ import Stats from 'stats.js';
 import * as OBC from '@thatopen/components';
 import * as FRAGS from '@thatopen/fragments';
 import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/viewer-config.model';
+import { TIMING, VIEWER } from '../../../shared/constants/app.constants';
 
 /**
  * Service that manages the 3D viewer, Three.js renderer, and @thatopen/components
@@ -14,11 +15,6 @@ import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/view
 })
 export class IfcViewerService {
   private readonly ngZone = inject(NgZone);
-
-  // Worker initialization configuration
-  private static readonly WORKER_INIT_MAX_WAIT_MS = 5000; // 5 seconds
-  private static readonly WORKER_INIT_POLL_INTERVAL_MS = 100; // Check every 100ms
-  private static readonly CAMERA_FIT_DELAY_MS = 200; // Delay for camera fitting to allow geometry to populate
 
   private canvas: HTMLCanvasElement | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -35,7 +31,6 @@ export class IfcViewerService {
   private config: ViewerConfig = DEFAULT_VIEWER_CONFIG;
   private currentModel: FRAGS.FragmentsModel | null = null;
   private lastUpdateTime: number = 0;
-  private static readonly UPDATE_THROTTLE_MS = 100; // Throttle updates to max 10 times per second
 
   /**
    * Initialize the viewer with a canvas element
@@ -55,7 +50,7 @@ export class IfcViewerService {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, VIEWER.MAX_PIXEL_RATIO));
 
     // Create scene with dark background
     this.scene = new THREE.Scene();
@@ -85,7 +80,12 @@ export class IfcViewerService {
 
     // Add grid helper if enabled
     if (this.config.showGrid) {
-      this.gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+      this.gridHelper = new THREE.GridHelper(
+        VIEWER.GRID_SIZE,
+        VIEWER.GRID_DIVISIONS,
+        VIEWER.GRID_COLOR_PRIMARY,
+        VIEWER.GRID_COLOR_SECONDARY
+      );
       this.scene.add(this.gridHelper);
     }
 
@@ -165,10 +165,10 @@ export class IfcViewerService {
 
       while (
         !this.fragmentsManager.initialized &&
-        Date.now() - startTime < IfcViewerService.WORKER_INIT_MAX_WAIT_MS
+        Date.now() - startTime < TIMING.WORKER_INIT_TIMEOUT
       ) {
         await new Promise((resolve) =>
-          setTimeout(resolve, IfcViewerService.WORKER_INIT_POLL_INTERVAL_MS)
+          setTimeout(resolve, TIMING.WORKER_POLL_INTERVAL)
         );
       }
 
@@ -207,7 +207,7 @@ export class IfcViewerService {
       // Fit camera to view the model after a short delay
       setTimeout(() => {
         this.fitCameraToModel(modelGroup);
-      }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+      }, TIMING.CAMERA_FIT_DELAY);
 
       console.log('Model added to scene successfully via event');
     });
@@ -310,7 +310,7 @@ export class IfcViewerService {
     // Update FragmentsModels for dynamic LOD and culling (throttled to avoid excessive calls)
     // Only update if enough time has passed since last update
     const now = Date.now();
-    if (this.fragmentsManager?.core && now - this.lastUpdateTime >= IfcViewerService.UPDATE_THROTTLE_MS) {
+    if (this.fragmentsManager?.core && now - this.lastUpdateTime >= TIMING.FRAGMENT_UPDATE_THROTTLE) {
       this.lastUpdateTime = now;
       // Update is async but we don't await it to avoid blocking the render loop
       this.fragmentsManager.core.update().catch((err) => {
@@ -404,7 +404,7 @@ export class IfcViewerService {
           // Fit camera to view the model after a short delay to allow tiles to populate
           setTimeout(() => {
             this.fitCameraToModel(modelGroup);
-          }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+          }, TIMING.CAMERA_FIT_DELAY);
         } else {
           console.log('Model already in scene (added by event)');
         }

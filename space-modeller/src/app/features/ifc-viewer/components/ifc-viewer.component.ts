@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
+import { NotificationService } from '../../../shared/services/notification.service';
+import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shared/constants/app.constants';
 
 /**
  * IFC Viewer Component
@@ -25,6 +27,7 @@ import { IfcViewerService } from '../services/ifc-viewer.service';
 })
 export class IfcViewerComponent implements OnDestroy {
   private readonly viewerService = inject(IfcViewerService);
+  private readonly notificationService = inject(NotificationService);
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
   protected readonly isLoading = signal<boolean>(false);
@@ -53,9 +56,15 @@ export class IfcViewerComponent implements OnDestroy {
 
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.ifc')) {
-      // TODO: Replace alert() with a proper notification service/toast component
-      alert('Please select a valid IFC file');
+    // Validate file extension
+    if (!FILE_VALIDATION.ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      this.notificationService.warning(ERROR_MESSAGES.INVALID_FILE_TYPE);
+      return;
+    }
+
+    // Validate file size
+    if (file.size > FILE_VALIDATION.MAX_FILE_SIZE) {
+      this.notificationService.error(ERROR_MESSAGES.FILE_TOO_LARGE);
       return;
     }
 
@@ -77,18 +86,17 @@ export class IfcViewerComponent implements OnDestroy {
 
       if (model) {
         console.log(`Successfully loaded: ${file.name}`);
-        // TODO: Replace alert() with a proper notification service/toast component
-        alert(`Successfully loaded: ${file.name}`);
+        this.notificationService.success(SUCCESS_MESSAGES.FILE_LOADED(file.name));
       } else {
         console.error('Model loading returned null');
-        // TODO: Replace alert() with a proper notification service/toast component
-        alert('Error: Model loading failed. Check console for details.');
+        this.notificationService.error(`${ERROR_MESSAGES.LOAD_FAILED}. Check console for details.`);
       }
     } catch (error) {
       console.error('Error loading IFC file:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      // TODO: Replace alert() with a proper notification service/toast component
-      alert(`Error loading IFC file: ${errorMessage}\n\nCheck console for details.`);
+      this.notificationService.error(
+        `Error loading IFC file: ${errorMessage}. Check console for details.`
+      );
     } finally {
       this.isLoading.set(false);
       // Reset input to allow reloading the same file
@@ -103,14 +111,20 @@ export class IfcViewerComponent implements OnDestroy {
     const currentModel = this.viewerService.getCurrentModel();
 
     if (!currentModel) {
-      alert('No model loaded. Please load an IFC file first.');
+      this.notificationService.warning(ERROR_MESSAGES.NO_MODEL_LOADED);
       return;
     }
 
-    const fileName = this.currentFileName() || 'model';
-    const baseName = fileName.replace('.ifc', '');
+    try {
+      const fileName = this.currentFileName() || 'model';
+      const baseName = fileName.replace('.ifc', '');
 
-    await this.viewerService.exportFragments(baseName);
+      await this.viewerService.exportFragments(baseName);
+      this.notificationService.success(SUCCESS_MESSAGES.FILE_EXPORTED(baseName));
+    } catch (error) {
+      console.error('Error exporting fragments:', error);
+      this.notificationService.error(ERROR_MESSAGES.EXPORT_FAILED);
+    }
   }
 
   /**
