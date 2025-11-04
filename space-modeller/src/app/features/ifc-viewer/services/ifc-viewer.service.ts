@@ -184,14 +184,7 @@ export class IfcViewerService {
     this.fragmentsManager.onFragmentsLoaded.add((model) => {
       if (!this.scene) return;
 
-      console.log('onFragmentsLoaded event fired - adding to scene');
-      console.log('Event model details:', {
-        modelId: model.modelId,
-        tiles: model.tiles,
-        tilesSize: model.tiles.size,
-        object: model.object,
-        objectChildren: model.object.children.length
-      });
+      console.log('onFragmentsLoaded event fired for model:', model.modelId);
 
       // Use the model.object property which is the THREE.Object3D container
       const modelGroup = model.object;
@@ -312,6 +305,13 @@ export class IfcViewerService {
       this.controls.update();
     }
 
+    // Update FragmentsModels for dynamic LOD and culling
+    // This is called asynchronously and won't block the render loop
+    if (this.fragmentsManager?.core) {
+      // Update is async but we don't await it to avoid blocking
+      this.fragmentsManager.core.update().catch(err => console.warn('FragmentsModels update error:', err));
+    }
+
     // Render scene
     this.renderer.render(this.scene, this.camera);
 
@@ -340,8 +340,6 @@ export class IfcViewerService {
 
     try {
       console.log(`Loading IFC file: ${fileName}, size: ${buffer.byteLength} bytes`);
-      console.log('FragmentsManager initialized:', this.fragmentsManager.initialized);
-      console.log('FragmentsManager list before load:', this.fragmentsManager.list.size);
 
       // Load IFC with coordinate transformation enabled (true)
       // This transforms the model coordinates to origin for better viewport positioning
@@ -353,47 +351,34 @@ export class IfcViewerService {
         },
       });
 
-      console.log('FragmentsManager list after load:', this.fragmentsManager.list.size);
+      console.log('IFC file loaded successfully');
+      console.log('Model has', model.tiles.size, 'tiles initially');
 
-      console.log('IFC file loaded successfully, model:', model);
-      console.log('Model details:', {
-        modelId: model.modelId,
-        tiles: model.tiles,
-        tilesSize: model.tiles.size,
-        object: model.object,
-        objectChildren: model.object.children.length,
-        box: model.box
-      });
-
-      // Force update to ensure tiles are loaded
-      console.log('Forcing FragmentsModels update...');
-      await this.fragmentsManager.core.update(true);
-      console.log('Update complete. Tiles now:', model.tiles.size);
-
-      // Set camera for dynamic tile loading
+      // Set camera for dynamic tile loading - required for FragmentsModel to load geometry
       if (this.camera) {
-        console.log('Setting camera on model for tile loading...');
         model.useCamera(this.camera);
-        // Force another update after setting camera
+        // Force initial update to load visible tiles
         await this.fragmentsManager.core.update(true);
-        console.log('After camera set, tiles:', model.tiles.size);
+        console.log('After camera set and update:', model.tiles.size, 'tiles loaded');
       }
       
-      // Manually add model to scene as the onFragmentsLoaded event may not fire
-      // Use the model.object property which is the THREE.Object3D container
+      // Add model to scene
+      // The model.object is a THREE.Object3D container that holds the mesh tiles
       const modelGroup = model.object;
       
       if (modelGroup && this.scene) {
         // Check if model was already added by onFragmentsLoaded event
         if (!this.scene.children.includes(modelGroup)) {
-          console.log('Manually adding model to scene (event did not fire)');
+          console.log('Adding model to scene');
           this.scene.add(modelGroup);
           this.currentModel = model;
           
-          // Defer camera fitting to allow geometry to populate
+          // Fit camera to view the model after a short delay to allow tiles to populate
           setTimeout(() => {
             this.fitCameraToModel(modelGroup);
           }, IfcViewerService.CAMERA_FIT_DELAY_MS);
+        } else {
+          console.log('Model already in scene (added by event)');
         }
       }
       
