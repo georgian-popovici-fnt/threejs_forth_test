@@ -45,6 +45,14 @@ export const VIEWER = {
 } as const;
 
 /**
+ * IFC Class configuration
+ */
+export const IFC_CLASS_CONFIG = {
+  /** IFC classes that should be hidden by default */
+  DEFAULT_HIDDEN_CLASSES: ['IFCSPACE'] as string[],
+} as const;
+
+/**
  * Error messages
  */
 export const ERROR_MESSAGES = {
