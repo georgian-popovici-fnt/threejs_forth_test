@@ -136,6 +136,16 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+.sidebar-button.active {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.sidebar-button.active:hover {
+  background: linear-gradient(135deg, #68d391 0%, #48bb78 100%);
+  box-shadow: 0 6px 16px rgba(72, 187, 120, 0.5);
+}
+
 .sidebar-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
