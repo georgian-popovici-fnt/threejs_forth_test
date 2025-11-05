@@ -770,6 +770,13 @@ export class IfcViewerService {
   }
 
   /**
+   * Get current camera
+   */
+  getCamera(): THREE.Camera | null {
+    return this.camera;
+  }
+
+  /**
    * Get all IFC categories from the current model
    */
   async getCategories(): Promise<string[]> {

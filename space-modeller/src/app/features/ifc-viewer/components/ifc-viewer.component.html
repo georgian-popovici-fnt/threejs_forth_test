@@ -11,6 +11,9 @@
     aria-label="3D viewport"
   ></canvas>
 
+  <!-- Orientation Cube -->
+  <app-orientation-cube [camera]="currentCamera()" />
+
   <!-- Sidebar -->
   <aside class="sidebar" [class.collapsed]="isSidebarCollapsed()">
     <!-- Toggle Button -->
