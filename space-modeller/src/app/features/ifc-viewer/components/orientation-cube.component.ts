@@ -9,7 +9,6 @@ import {
   input,
   OnDestroy,
   signal,
-  computed,
 } from '@angular/core';
 import * as THREE from 'three';
 
@@ -112,6 +111,7 @@ export class OrientationCubeComponent implements OnDestroy {
   private animationFrameId: number | null = null;
   private lastCoordinateUpdate: number = 0;
   private readonly COORDINATE_UPDATE_INTERVAL = 100; // ms
+  private readonly eulerAngles = new THREE.Euler(); // Reused for efficiency
 
   // Constants
   private readonly MAX_PIXEL_RATIO = 2;
@@ -321,11 +321,11 @@ export class OrientationCubeComponent implements OnDestroy {
             z: mainCamera.position.z.toFixed(2),
           });
 
-          const euler = new THREE.Euler().setFromQuaternion(mainCamera.quaternion);
+          this.eulerAngles.setFromQuaternion(mainCamera.quaternion);
           this.cameraRotation.set({
-            x: Math.round(THREE.MathUtils.radToDeg(euler.x)).toString(),
-            y: Math.round(THREE.MathUtils.radToDeg(euler.y)).toString(),
-            z: Math.round(THREE.MathUtils.radToDeg(euler.z)).toString(),
+            x: Math.round(THREE.MathUtils.radToDeg(this.eulerAngles.x)).toString(),
+            y: Math.round(THREE.MathUtils.radToDeg(this.eulerAngles.y)).toString(),
+            z: Math.round(THREE.MathUtils.radToDeg(this.eulerAngles.z)).toString(),
           });
         });
       }
