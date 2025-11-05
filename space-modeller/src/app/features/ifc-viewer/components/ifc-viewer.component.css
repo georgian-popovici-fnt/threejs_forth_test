@@ -18,6 +18,11 @@
   height: 100%;
   outline: none;
   touch-action: none;
+  cursor: grab;
+}
+
+.viewport-canvas.is-dragging {
+  cursor: grabbing;
 }
 
 /* Sidebar - left side panel */

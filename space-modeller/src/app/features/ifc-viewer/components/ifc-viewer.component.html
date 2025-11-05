@@ -3,6 +3,10 @@
   <canvas
     #canvas
     class="viewport-canvas"
+    [class.is-dragging]="isDragging()"
+    (mousedown)="onCanvasMouseDown($event)"
+    (mouseup)="onCanvasMouseUp()"
+    (mouseleave)="onCanvasMouseUp()"
     role="application"
     aria-label="3D viewport"
   ></canvas>

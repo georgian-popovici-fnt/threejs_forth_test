@@ -47,6 +47,7 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly isSidebarCollapsed = signal<boolean>(false);
   protected readonly ifcClasses = signal<IfcClass[]>([]);
   protected readonly currentCameraMode = signal<CameraMode>(CameraMode.PERSPECTIVE_3D);
+  protected readonly isDragging = signal<boolean>(false);
 
   constructor() {
     afterNextRender(() => {
@@ -233,6 +234,23 @@ export class IfcViewerComponent implements OnDestroy {
       this.logger.error('Error changing camera mode:', error);
       this.notificationService.error('Failed to change camera mode');
     }
+  }
+
+  /**
+   * Handle mouse down on canvas
+   */
+  protected onCanvasMouseDown(event: MouseEvent): void {
+    // Only set dragging state for primary mouse button (left click)
+    if (event.button === 0) {
+      this.isDragging.set(true);
+    }
+  }
+
+  /**
+   * Handle mouse up on canvas
+   */
+  protected onCanvasMouseUp(): void {
+    this.isDragging.set(false);
   }
 
   /**
