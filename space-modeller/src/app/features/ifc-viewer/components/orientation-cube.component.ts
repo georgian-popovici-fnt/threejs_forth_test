@@ -54,6 +54,14 @@ export class OrientationCubeComponent implements OnDestroy {
   private cube: THREE.Group | null = null;
   private animationFrameId: number | null = null;
 
+  // Constants
+  private readonly MAX_PIXEL_RATIO = 2;
+  private readonly CANVAS_SIZE = 256; // High resolution for crisp text
+  private readonly MAX_TEXT_LENGTH = 10;
+  private readonly CUBE_SIZE = 1.5;
+  private readonly CAMERA_DISTANCE = 4;
+  private readonly CAMERA_FOV = 50;
+
   // Face configuration with colors and labels
   private readonly faceConfig = [
     { name: 'Front (N)', color: 0x4a90e2, normal: new THREE.Vector3(0, 0, 1) },   // +Z
@@ -75,7 +83,7 @@ export class OrientationCubeComponent implements OnDestroy {
    */
   private initCube(): void {
     const canvas = this.canvasRef().nativeElement;
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = Math.min(window.devicePixelRatio, this.MAX_PIXEL_RATIO);
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -91,8 +99,8 @@ export class OrientationCubeComponent implements OnDestroy {
     this.scene = new THREE.Scene();
 
     // Create camera for the cube view
-    this.cubeCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    this.cubeCamera.position.set(0, 0, 4);
+    this.cubeCamera = new THREE.PerspectiveCamera(this.CAMERA_FOV, 1, 0.1, 100);
+    this.cubeCamera.position.set(0, 0, this.CAMERA_DISTANCE);
 
     // Create cube group
     this.cube = new THREE.Group();
@@ -118,20 +126,21 @@ export class OrientationCubeComponent implements OnDestroy {
   private createLabeledCube(): void {
     if (!this.cube) return;
 
-    const size = 1.5;
-    const geometry = new THREE.BoxGeometry(size, size, size);
+    const geometry = new THREE.BoxGeometry(this.CUBE_SIZE, this.CUBE_SIZE, this.CUBE_SIZE);
     
     // Create materials for each face
     const materials: THREE.MeshBasicMaterial[] = [];
     
-    // Face order in BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
-    const faceOrder = [2, 3, 4, 5, 0, 1]; // Map to our config order: Right, Left, Top, (skip Bottom), Front, Back
+    // BoxGeometry face order: +X (right), -X (left), +Y (top), -Y (bottom), +Z (front), -Z (back)
+    // Map to our face config: Right, Left, Top, (skip Bottom), Front, Back
+    const faceOrder = [2, 3, 4, 5, 0, 1]; // Indices into this.faceConfig
+    const BOTTOM_FACE_INDEX = 3; // -Y face in BoxGeometry
     
     for (let i = 0; i < 6; i++) {
       const configIndex = faceOrder[i];
       
-      // Skip bottom face (index 3 in geometry, which is -Y)
-      if (i === 3) {
+      // Skip bottom face (-Y)
+      if (i === BOTTOM_FACE_INDEX) {
         materials.push(new THREE.MeshBasicMaterial({ 
           color: 0x222222,
           transparent: true,
@@ -166,23 +175,22 @@ export class OrientationCubeComponent implements OnDestroy {
    */
   private createTextCanvas(text: string, backgroundColor: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
-    const size = 256; // High resolution for crisp text
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = this.CANVAS_SIZE;
+    canvas.height = this.CANVAS_SIZE;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return canvas;
 
     // Background color
     ctx.fillStyle = `#${backgroundColor.toString(16).padStart(6, '0')}`;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, this.CANVAS_SIZE, this.CANVAS_SIZE);
 
     // Add subtle gradient
-    const gradient = ctx.createLinearGradient(0, 0, size, size);
+    const gradient = ctx.createLinearGradient(0, 0, this.CANVAS_SIZE, this.CANVAS_SIZE);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, this.CANVAS_SIZE, this.CANVAS_SIZE);
 
     // Draw text
     ctx.fillStyle = '#ffffff';
@@ -195,18 +203,18 @@ export class OrientationCubeComponent implements OnDestroy {
     ctx.shadowOffsetY = 2;
     
     // Handle multi-line text (e.g., "Front (N)")
-    const lines = this.wrapText(text, 10);
+    const lines = this.wrapText(text, this.MAX_TEXT_LENGTH);
     const lineHeight = 56;
-    const startY = size / 2 - ((lines.length - 1) * lineHeight) / 2;
+    const startY = this.CANVAS_SIZE / 2 - ((lines.length - 1) * lineHeight) / 2;
     
     lines.forEach((line, i) => {
-      ctx.fillText(line, size / 2, startY + i * lineHeight);
+      ctx.fillText(line, this.CANVAS_SIZE / 2, startY + i * lineHeight);
     });
 
     // Border
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, size - 2, size - 2);
+    ctx.strokeRect(1, 1, this.CANVAS_SIZE - 2, this.CANVAS_SIZE - 2);
 
     return canvas;
   }
