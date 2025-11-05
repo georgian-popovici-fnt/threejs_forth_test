@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { LoggerService } from '../../../shared/services/logger.service';
-import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../shared/constants/app.constants';
+import { FILE_VALIDATION, ERROR_MESSAGES, SUCCESS_MESSAGES, IFC_CLASS_CONFIG } from '../../../shared/constants/app.constants';
 import {
   sanitizeFileName,
   hasAllowedExtension,
@@ -178,18 +178,30 @@ export class IfcViewerComponent implements OnDestroy {
       // Get items for each category
       const categoryItems = await this.viewerService.getItemsOfCategories(categories);
       
-      // Create IfcClass objects with visibility set to true by default
+      // Create IfcClass objects with visibility set based on configuration
       const ifcClasses: IfcClass[] = categories
-        .map(category => ({
-          name: category,
-          visible: true,
-          itemIds: categoryItems[category] || [],
-        }))
+        .map(category => {
+          // Check if this category should be hidden by default
+          const shouldBeHidden = IFC_CLASS_CONFIG.DEFAULT_HIDDEN_CLASSES.includes(category);
+          return {
+            name: category,
+            visible: !shouldBeHidden, // Hide if in the default hidden list
+            itemIds: categoryItems[category] || [],
+          };
+        })
         .filter(ifcClass => ifcClass.itemIds.length > 0) // Only include categories with items
         .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
 
       this.ifcClasses.set(ifcClasses);
       this.logger.info(`Loaded ${ifcClasses.length} IFC classes`);
+
+      // Apply initial visibility state to the viewer for all classes
+      for (const ifcClass of ifcClasses) {
+        await this.viewerService.setItemsVisible(ifcClass.itemIds, ifcClass.visible);
+        if (!ifcClass.visible) {
+          this.logger.debug(`Hidden by default: ${ifcClass.name} (${ifcClass.itemIds.length} items)`);
+        }
+      }
     } catch (error) {
       this.logger.error('Error loading IFC classes:', error);
       this.notificationService.error('Failed to load IFC classes');

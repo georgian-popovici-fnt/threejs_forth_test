@@ -9,6 +9,7 @@ This is a production-ready 3D viewer for IFC (Industry Foundation Classes) files
 ### Core Functionality
 - **IFC File Loading**: Import .ifc files via file picker
 - **Fragment Export**: Download loaded models as .frag files for faster loading
+- **IFC Class Filtering**: Show/hide different IFC element types (walls, slabs, spaces, etc.)
 - **Real-time Memory Monitoring**: Stats.js panel showing memory usage
 - **Smooth Navigation**: OrbitControls for intuitive camera movement
 - **Modern Rendering**: sRGB color space and ACES Filmic tone mapping
@@ -72,6 +73,17 @@ The build artifacts will be stored in the `dist/` directory.
 3. The optimized fragment file will be downloaded
 4. Fragment files can be loaded faster than IFC files in future sessions
 
+### Filtering IFC Classes
+
+After loading an IFC file, you can control the visibility of different element types:
+
+1. Look for the **"IFC Classes"** panel in the sidebar
+2. Each IFC class (e.g., IFCWALL, IFCSLAB, IFCSPACE) has a checkbox
+3. Check/uncheck to show/hide specific element types
+4. The count shows how many elements of each type are in the model
+
+**Note**: By default, IFCSPACE elements (representing room volumes) are hidden to declutter the view. You can enable them by checking the IFCSPACE checkbox if needed.
+
 ### Monitoring Memory Usage
 
 The stats.js panel in the top-left corner shows:
@@ -122,6 +134,24 @@ This uses local WASM files bundled with your application.
 wasmPath: 'https://unpkg.com/web-ifc@0.0.57/'
 ```
 This uses a CDN but adds external dependency.
+
+### IFC Class Visibility Configuration
+
+You can configure which IFC classes are hidden by default in `src/app/shared/constants/app.constants.ts`:
+
+```typescript
+export const IFC_CLASS_CONFIG = {
+  /** IFC classes that should be hidden by default */
+  DEFAULT_HIDDEN_CLASSES: ['IFCSPACE'] as string[],
+} as const;
+```
+
+To hide additional IFC classes by default, add them to the array:
+```typescript
+DEFAULT_HIDDEN_CLASSES: ['IFCSPACE', 'IFCOPENINGELEMENT'] as string[],
+```
+
+Users can always toggle visibility of these classes through the UI.
 
 ## Architecture
 
