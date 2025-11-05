@@ -52,7 +52,6 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly ifcClasses = signal<IfcClass[]>([]);
   protected readonly currentCameraMode = signal<CameraMode>(CameraMode.PERSPECTIVE_3D);
   protected readonly currentLightMode = signal<LightMode>(LightMode.DEFAULT);
-  protected readonly isPanMode = signal<boolean>(false);
   protected readonly isDragging = signal<boolean>(false);
 
   // Computed signal to get the current camera for the orientation cube
@@ -285,21 +284,6 @@ export class IfcViewerComponent implements OnDestroy {
     } catch (error) {
       this.logger.error('Error changing light mode:', error);
       this.notificationService.error('Failed to change light mode');
-    }
-  }
-
-  /**
-   * Toggle pan mode
-   */
-  protected togglePanMode(): void {
-    const newPanMode = !this.isPanMode();
-    try {
-      this.viewerService.setPanMode(newPanMode);
-      this.isPanMode.set(newPanMode);
-      this.logger.info(`Pan mode ${newPanMode ? 'enabled' : 'disabled'}`);
-    } catch (error) {
-      this.logger.error('Error toggling pan mode:', error);
-      this.notificationService.error('Failed to toggle pan mode');
     }
   }
 

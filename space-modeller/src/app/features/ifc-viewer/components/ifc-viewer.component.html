@@ -61,30 +61,6 @@
         (modeChange)="onLightModeChange($event)"
       ></app-light-selector>
 
-      <!-- Pan Mode Button -->
-      <button
-        class="sidebar-button"
-        [class.active]="isPanMode()"
-        (click)="togglePanMode()"
-        type="button"
-        [attr.aria-pressed]="isPanMode()"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"></path>
-        </svg>
-        <span>{{ isPanMode() ? 'Pan Mode: ON' : 'Pan Mode: OFF' }}</span>
-      </button>
-
       <!-- File Import -->
       <label class="sidebar-button" for="ifc-file-input">
         <svg

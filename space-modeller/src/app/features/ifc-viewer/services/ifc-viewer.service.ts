@@ -122,7 +122,33 @@ export class IfcViewerService {
   }
 
   /**
+   * Configure OrbitControls for pan-only navigation
+   * Disables zoom and rotation, enables panning only
+   */
+  private configurePanOnlyControls(controls: OrbitControls): void {
+    controls.enablePan = true;
+    controls.enableZoom = false;
+    controls.enableRotate = false;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 1.0;
+
+    // Map all mouse buttons to pan
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.PAN,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+
+    // Map all touch gestures to pan
+    controls.touches = {
+      ONE: THREE.TOUCH.PAN,
+      TWO: THREE.TOUCH.PAN,
+    };
+  }
+
+  /**
    * Initialize OrbitControls for camera manipulation
+   * Configured for pan-only navigation (no zoom, no rotation)
    */
   private initializeControls(): void {
     if (!this.camera || !this.canvas) return;
@@ -130,6 +156,9 @@ export class IfcViewerService {
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+
+    // Configure pan-only navigation
+    this.configurePanOnlyControls(this.controls);
 
     // Set camera target
     this.controls.target.set(
@@ -139,6 +168,12 @@ export class IfcViewerService {
     );
 
     this.controls.update();
+
+    // Prevent browser default wheel behavior
+    if (this.canvas) {
+      this.canvas.style.touchAction = 'none';
+      this.canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    }
   }
 
   /**
@@ -233,12 +268,8 @@ export class IfcViewerService {
       this.controls.dampingFactor = 0.05;
       this.controls.target.copy(currentTarget);
       
-      // For orthographic views, disable rotation to keep the view locked
-      if (mode !== CameraMode.PERSPECTIVE_3D) {
-        this.controls.enableRotate = false;
-      } else {
-        this.controls.enableRotate = true;
-      }
+      // Maintain pan-only configuration (no zoom, no rotation)
+      this.configurePanOnlyControls(this.controls);
       
       this.controls.update();
     }
@@ -887,22 +918,5 @@ export class IfcViewerService {
    */
   getLightMode(): LightMode {
     return this.currentLightMode;
-  }
-
-  /**
-   * Enable or disable pan mode
-   */
-  setPanMode(enabled: boolean): void {
-    if (!this.controls) {
-      this.logger.warn('Controls not initialized');
-      return;
-    }
-
-    // When pan mode is enabled, disable rotation and enable panning
-    // When disabled, restore rotation and keep panning available
-    this.controls.enableRotate = !enabled;
-    this.controls.enablePan = true; // Always allow panning
-    
-    this.logger.info(`Pan mode ${enabled ? 'enabled' : 'disabled'}`);
   }
 }
