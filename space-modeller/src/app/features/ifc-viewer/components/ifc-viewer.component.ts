@@ -7,6 +7,7 @@ import {
   afterNextRender,
   signal,
   OnDestroy,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IfcViewerService } from '../services/ifc-viewer.service';
@@ -23,6 +24,7 @@ import { IfcClass } from '../../../shared/models/ifc-class.model';
 import { CameraMode } from '../../../shared/models/camera-mode.model';
 import { IfcClassFilterComponent } from './ifc-class-filter.component';
 import { CameraSelectorComponent } from './camera-selector.component';
+import { OrientationCubeComponent } from './orientation-cube.component';
 
 /**
  * IFC Viewer Component
@@ -31,7 +33,7 @@ import { CameraSelectorComponent } from './camera-selector.component';
 @Component({
   selector: 'app-ifc-viewer',
   standalone: true,
-  imports: [CommonModule, IfcClassFilterComponent, CameraSelectorComponent],
+  imports: [CommonModule, IfcClassFilterComponent, CameraSelectorComponent, OrientationCubeComponent],
   templateUrl: './ifc-viewer.component.html',
   styleUrl: './ifc-viewer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,6 +50,9 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly ifcClasses = signal<IfcClass[]>([]);
   protected readonly currentCameraMode = signal<CameraMode>(CameraMode.PERSPECTIVE_3D);
   protected readonly isDragging = signal<boolean>(false);
+
+  // Computed signal to get the current camera for the orientation cube
+  protected readonly currentCamera = computed(() => this.viewerService.getCamera());
 
   constructor() {
     afterNextRender(() => {
