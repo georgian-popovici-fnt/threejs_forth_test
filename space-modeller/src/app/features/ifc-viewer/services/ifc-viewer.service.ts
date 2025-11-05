@@ -1,4 +1,4 @@
-import { Injectable, inject, NgZone } from '@angular/core';
+import { Injectable, inject, NgZone, signal } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Stats from 'stats.js';
@@ -42,6 +42,9 @@ export class IfcViewerService {
   private config: ViewerConfig = DEFAULT_VIEWER_CONFIG;
   private currentModel: FRAGS.FragmentsModel | null = null;
   private lastUpdateTime: number = 0;
+
+  // Public signal for the current camera (for reactive UI updates)
+  public readonly cameraSignal = signal<THREE.Camera | null>(null);
 
   /**
    * Initialize the viewer with a canvas element
@@ -169,6 +172,7 @@ export class IfcViewerService {
 
     // Set active camera to perspective by default
     this.camera = this.perspectiveCamera;
+    this.cameraSignal.set(this.camera);
   }
 
   /**
@@ -237,6 +241,9 @@ export class IfcViewerService {
     if (this.currentModel && this.camera) {
       this.currentModel.useCamera(this.camera);
     }
+
+    // Update camera signal for reactive UI updates
+    this.cameraSignal.set(this.camera);
 
     this.logger.info(`Camera mode changed to: ${mode}`);
   }

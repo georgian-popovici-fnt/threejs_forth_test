@@ -52,7 +52,7 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly isDragging = signal<boolean>(false);
 
   // Computed signal to get the current camera for the orientation cube
-  protected readonly currentCamera = computed(() => this.viewerService.getCamera());
+  protected readonly currentCamera = computed(() => this.viewerService.cameraSignal());
 
   constructor() {
     afterNextRender(() => {

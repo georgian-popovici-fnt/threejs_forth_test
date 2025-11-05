@@ -8,6 +8,8 @@ import {
   afterNextRender,
   input,
   OnDestroy,
+  signal,
+  computed,
 } from '@angular/core';
 import * as THREE from 'three';
 
@@ -18,25 +20,76 @@ import * as THREE from 'three';
 @Component({
   selector: 'app-orientation-cube',
   standalone: true,
-  template: `<canvas #canvas class="orientation-cube-canvas"></canvas>`,
+  template: `
+    <canvas #canvas class="orientation-cube-canvas"></canvas>
+    <div class="coordinates-panel">
+      <div class="coordinates-section">
+        <div class="coordinates-label">Position</div>
+        <div class="coordinates-value">X: {{ cameraPosition().x }}</div>
+        <div class="coordinates-value">Y: {{ cameraPosition().y }}</div>
+        <div class="coordinates-value">Z: {{ cameraPosition().z }}</div>
+      </div>
+      <div class="coordinates-section">
+        <div class="coordinates-label">Rotation</div>
+        <div class="coordinates-value">X: {{ cameraRotation().x }}°</div>
+        <div class="coordinates-value">Y: {{ cameraRotation().y }}°</div>
+        <div class="coordinates-value">Z: {{ cameraRotation().z }}°</div>
+      </div>
+    </div>
+  `,
   styles: [`
     :host {
       display: block;
       position: fixed;
       top: 16px;
       right: 16px;
-      width: 80px;
-      height: 80px;
       z-index: 1000;
       pointer-events: none;
     }
 
     .orientation-cube-canvas {
       display: block;
-      width: 100%;
-      height: 100%;
+      width: 80px;
+      height: 80px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .coordinates-panel {
+      margin-top: 8px;
+      background: rgba(0, 0, 0, 0.75);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      min-width: 120px;
+    }
+
+    .coordinates-section {
+      margin-bottom: 6px;
+    }
+
+    .coordinates-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .coordinates-label {
+      font-weight: bold;
+      font-size: 9px;
+      text-transform: uppercase;
+      color: #4a90e2;
+      margin-bottom: 2px;
+      letter-spacing: 0.5px;
+    }
+
+    .coordinates-value {
+      font-size: 10px;
+      line-height: 1.3;
+      color: #e0e0e0;
+      padding-left: 4px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,11 +101,17 @@ export class OrientationCubeComponent implements OnDestroy {
   // Input: main camera to mirror
   readonly camera = input<THREE.Camera | null>(null);
 
+  // Writable signals for camera position and rotation (updated in animation loop)
+  protected readonly cameraPosition = signal({ x: '0.00', y: '0.00', z: '0.00' });
+  protected readonly cameraRotation = signal({ x: '0', y: '0', z: '0' });
+
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
   private cubeCamera: THREE.PerspectiveCamera | null = null;
   private cube: THREE.Group | null = null;
   private animationFrameId: number | null = null;
+  private lastCoordinateUpdate: number = 0;
+  private readonly COORDINATE_UPDATE_INTERVAL = 100; // ms
 
   // Constants
   private readonly MAX_PIXEL_RATIO = 2;
@@ -248,6 +307,28 @@ export class OrientationCubeComponent implements OnDestroy {
       // We invert the quaternion so the cube appears to rotate opposite to the camera view
       const quaternion = mainCamera.quaternion.clone();
       this.cube.quaternion.copy(quaternion).invert();
+
+      // Update coordinate signals periodically (throttled to avoid excessive change detection)
+      const now = Date.now();
+      if (now - this.lastCoordinateUpdate >= this.COORDINATE_UPDATE_INTERVAL) {
+        this.lastCoordinateUpdate = now;
+        
+        // Run inside Angular zone for change detection
+        this.ngZone.run(() => {
+          this.cameraPosition.set({
+            x: mainCamera.position.x.toFixed(2),
+            y: mainCamera.position.y.toFixed(2),
+            z: mainCamera.position.z.toFixed(2),
+          });
+
+          const euler = new THREE.Euler().setFromQuaternion(mainCamera.quaternion);
+          this.cameraRotation.set({
+            x: Math.round(THREE.MathUtils.radToDeg(euler.x)).toString(),
+            y: Math.round(THREE.MathUtils.radToDeg(euler.y)).toString(),
+            z: Math.round(THREE.MathUtils.radToDeg(euler.z)).toString(),
+          });
+        });
+      }
     }
 
     this.renderer.render(this.scene, this.cubeCamera);
