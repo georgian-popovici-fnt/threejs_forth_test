@@ -48,8 +48,8 @@ import * as THREE from 'three';
 
     .orientation-cube-canvas {
       display: block;
-      width: 80px;
-      height: 80px;
+      width: 120px;
+      height: 120px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
@@ -117,7 +117,7 @@ export class OrientationCubeComponent implements OnDestroy {
   private readonly MAX_PIXEL_RATIO = 2;
   private readonly CANVAS_SIZE = 256; // High resolution for crisp text
   private readonly MAX_TEXT_LENGTH = 10;
-  private readonly CUBE_SIZE = 1.5;
+  private readonly CUBE_SIZE = 2.25;
   private readonly CAMERA_DISTANCE = 4;
   private readonly CAMERA_FOV = 50;
 
@@ -151,7 +151,7 @@ export class OrientationCubeComponent implements OnDestroy {
       antialias: true,
     });
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setSize(80, 80, false);
+    this.renderer.setSize(120, 120, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     // Create scene with transparent background
