@@ -4,7 +4,7 @@
     #canvas
     class="viewport-canvas"
     [class.is-dragging]="isDragging()"
-    (mousedown)="onCanvasMouseDown()"
+    (mousedown)="onCanvasMouseDown($event)"
     (mouseup)="onCanvasMouseUp()"
     (mouseleave)="onCanvasMouseUp()"
     role="application"

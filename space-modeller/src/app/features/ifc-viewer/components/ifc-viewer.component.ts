@@ -239,8 +239,11 @@ export class IfcViewerComponent implements OnDestroy {
   /**
    * Handle mouse down on canvas
    */
-  protected onCanvasMouseDown(): void {
-    this.isDragging.set(true);
+  protected onCanvasMouseDown(event: MouseEvent): void {
+    // Only set dragging state for primary mouse button (left click)
+    if (event.button === 0) {
+      this.isDragging.set(true);
+    }
   }
 
   /**
