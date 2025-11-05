@@ -22,8 +22,10 @@ import {
 } from '../../../shared/utils/file.utils';
 import { IfcClass } from '../../../shared/models/ifc-class.model';
 import { CameraMode } from '../../../shared/models/camera-mode.model';
+import { LightMode } from '../../../shared/models/light-mode.model';
 import { IfcClassFilterComponent } from './ifc-class-filter.component';
 import { CameraSelectorComponent } from './camera-selector.component';
+import { LightSelectorComponent } from './light-selector.component';
 import { OrientationCubeComponent } from './orientation-cube.component';
 
 /**
@@ -33,7 +35,7 @@ import { OrientationCubeComponent } from './orientation-cube.component';
 @Component({
   selector: 'app-ifc-viewer',
   standalone: true,
-  imports: [CommonModule, IfcClassFilterComponent, CameraSelectorComponent, OrientationCubeComponent],
+  imports: [CommonModule, IfcClassFilterComponent, CameraSelectorComponent, LightSelectorComponent, OrientationCubeComponent],
   templateUrl: './ifc-viewer.component.html',
   styleUrl: './ifc-viewer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +51,7 @@ export class IfcViewerComponent implements OnDestroy {
   protected readonly isSidebarCollapsed = signal<boolean>(false);
   protected readonly ifcClasses = signal<IfcClass[]>([]);
   protected readonly currentCameraMode = signal<CameraMode>(CameraMode.PERSPECTIVE_3D);
+  protected readonly currentLightMode = signal<LightMode>(LightMode.DEFAULT);
   protected readonly isDragging = signal<boolean>(false);
 
   // Computed signal to get the current camera for the orientation cube
@@ -268,6 +271,20 @@ export class IfcViewerComponent implements OnDestroy {
    */
   protected onCanvasMouseUp(): void {
     this.isDragging.set(false);
+  }
+
+  /**
+   * Handle light mode change
+   */
+  protected onLightModeChange(mode: LightMode): void {
+    try {
+      this.viewerService.setLightMode(mode);
+      this.currentLightMode.set(mode);
+      this.logger.info(`Light mode changed to: ${mode}`);
+    } catch (error) {
+      this.logger.error('Error changing light mode:', error);
+      this.notificationService.error('Failed to change light mode');
+    }
   }
 
   /**
