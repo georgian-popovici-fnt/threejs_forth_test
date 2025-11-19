@@ -77,4 +77,73 @@ describe('NotificationService', () => {
       done();
     }, 150);
   });
+
+  it('should not auto-dismiss notifications with duration 0', (done) => {
+    service.success('Test message', 0);
+
+    expect(service.notifications$().length).toBe(1);
+
+    setTimeout(() => {
+      expect(service.notifications$().length).toBe(1);
+      done();
+    }, 150);
+  });
+
+  it('should generate unique IDs for notifications', () => {
+    service.success('Message 1');
+    service.success('Message 2');
+
+    const notifications = service.notifications$();
+    expect(notifications[0].id).not.toBe(notifications[1].id);
+  });
+
+  it('should set correct duration for notifications', () => {
+    service.success('Test message', 5000);
+
+    const notification = service.notifications$()[0];
+    expect(notification.duration).toBe(5000);
+  });
+
+  it('should use default duration when not specified', () => {
+    service.success('Test message');
+
+    const notification = service.notifications$()[0];
+    expect(notification.duration).toBeGreaterThan(0);
+  });
+
+  it('should handle dismissing non-existent notification', () => {
+    service.success('Test message');
+    
+    expect(() => {
+      service.dismiss('non-existent-id');
+    }).not.toThrow();
+    
+    expect(service.notifications$().length).toBe(1);
+  });
+
+  it('should maintain order of notifications', () => {
+    service.success('Message 1');
+    service.error('Message 2');
+    service.warning('Message 3');
+
+    const notifications = service.notifications$();
+    expect(notifications[0].message).toBe('Message 1');
+    expect(notifications[1].message).toBe('Message 2');
+    expect(notifications[2].message).toBe('Message 3');
+  });
+
+  it('should dismiss only the specified notification', () => {
+    service.success('Message 1');
+    service.error('Message 2');
+    service.warning('Message 3');
+
+    const notifications = service.notifications$();
+    const idToRemove = notifications[1].id;
+
+    service.dismiss(idToRemove);
+
+    const remainingNotifications = service.notifications$();
+    expect(remainingNotifications.length).toBe(2);
+    expect(remainingNotifications.find(n => n.id === idToRemove)).toBeUndefined();
+  });
 });

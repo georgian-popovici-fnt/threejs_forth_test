@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { IfcViewerComponent } from './ifc-viewer.component';
 import { IfcViewerService } from '../services/ifc-viewer.service';
 import { NotificationService } from '../../../shared/services/notification.service';
+import { CameraMode } from '../../../shared/models/camera-mode.model';
+import { LightMode } from '../../../shared/models/light-mode.model';
 
 describe('IfcViewerComponent', () => {
   let mockViewerService: jasmine.SpyObj<IfcViewerService>;
@@ -207,5 +209,271 @@ describe('IfcViewerComponent', () => {
 
     const ifcWallClass = ifcClasses.find(c => c.name === 'IFCWALL');
     expect(ifcWallClass?.visible).toBeTrue();
+  });
+
+  it('should reject files with invalid extensions', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    const mockFile = new File([''], 'test.txt', { type: 'text/plain' });
+    const mockEvent = {
+      target: {
+        files: [mockFile],
+        value: '',
+      },
+    } as any;
+
+    await component['onFileSelected'](mockEvent);
+
+    expect(mockNotificationService.warning).toHaveBeenCalled();
+    expect(mockViewerService.loadIfcFile).not.toHaveBeenCalled();
+  });
+
+  it('should reject files that are too large', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    // Create a file object with size exceeding the limit
+    const largeFile = new File(['x'.repeat(1024 * 1024 * 501)], 'large.ifc', {
+      type: 'application/octet-stream',
+    });
+    
+    // Override the size property
+    Object.defineProperty(largeFile, 'size', {
+      value: 1024 * 1024 * 501, // 501 MB
+      writable: false,
+    });
+
+    const mockEvent = {
+      target: {
+        files: [largeFile],
+        value: '',
+      },
+    } as any;
+
+    await component['onFileSelected'](mockEvent);
+
+    expect(mockNotificationService.error).toHaveBeenCalled();
+    expect(mockViewerService.loadIfcFile).not.toHaveBeenCalled();
+  });
+
+  it('should handle export fragments when model is loaded', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.getCurrentModel.and.returnValue({ uuid: 'test-model' } as any);
+    mockViewerService.exportFragments.and.returnValue(Promise.resolve());
+    
+    component['currentFileName'].set('test.ifc');
+
+    await component['onExportFragments']();
+
+    expect(mockViewerService.exportFragments).toHaveBeenCalledWith('test');
+    expect(mockNotificationService.success).toHaveBeenCalled();
+  });
+
+  it('should show warning when trying to export without a model', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.getCurrentModel.and.returnValue(null);
+
+    await component['onExportFragments']();
+
+    expect(mockNotificationService.warning).toHaveBeenCalled();
+    expect(mockViewerService.exportFragments).not.toHaveBeenCalled();
+  });
+
+  it('should handle export errors gracefully', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.getCurrentModel.and.returnValue({ uuid: 'test-model' } as any);
+    mockViewerService.exportFragments.and.returnValue(Promise.reject(new Error('Export failed')));
+    
+    component['currentFileName'].set('test.ifc');
+
+    await component['onExportFragments']();
+
+    expect(mockNotificationService.error).toHaveBeenCalled();
+  });
+
+  it('should handle camera mode change', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.setCameraMode = jasmine.createSpy('setCameraMode');
+
+    const cameraMode = CameraMode.ORTHOGRAPHIC_TOP;
+    component['onCameraModeChange'](cameraMode);
+
+    expect(mockViewerService.setCameraMode).toHaveBeenCalledWith(cameraMode);
+    expect(component['currentCameraMode']()).toBe(cameraMode);
+  });
+
+  it('should handle camera mode change errors', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.setCameraMode = jasmine.createSpy('setCameraMode').and.throwError('Camera error');
+
+    const cameraMode = CameraMode.ORTHOGRAPHIC_TOP;
+    component['onCameraModeChange'](cameraMode);
+
+    expect(mockNotificationService.error).toHaveBeenCalled();
+  });
+
+  it('should handle light mode change', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.setLightMode = jasmine.createSpy('setLightMode');
+
+    const lightMode = LightMode.BRIGHT;
+    component['onLightModeChange'](lightMode);
+
+    expect(mockViewerService.setLightMode).toHaveBeenCalledWith(lightMode);
+    expect(component['currentLightMode']()).toBe(lightMode);
+  });
+
+  it('should handle light mode change errors', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.setLightMode = jasmine.createSpy('setLightMode').and.throwError('Light error');
+
+    const lightMode = LightMode.BRIGHT;
+    component['onLightModeChange'](lightMode);
+
+    expect(mockNotificationService.error).toHaveBeenCalled();
+  });
+
+  it('should handle canvas mouse down for left click', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    const mockEvent = { button: 0 } as MouseEvent;
+
+    component['onCanvasMouseDown'](mockEvent);
+
+    expect(component['isDragging']()).toBeTrue();
+  });
+
+  it('should not set dragging for non-left clicks', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    const mockEvent = { button: 1 } as MouseEvent; // Middle click
+
+    component['onCanvasMouseDown'](mockEvent);
+
+    expect(component['isDragging']()).toBeFalse();
+  });
+
+  it('should handle canvas mouse up', () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    component['isDragging'].set(true);
+    component['onCanvasMouseUp']();
+
+    expect(component['isDragging']()).toBeFalse();
+  });
+
+  it('should handle class visibility change', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    // Set up some classes
+    component['ifcClasses'].set([
+      { name: 'IFCWALL', visible: true, itemIds: [1, 2, 3] },
+      { name: 'IFCDOOR', visible: true, itemIds: [4, 5] },
+    ]);
+
+    await component['onClassVisibilityChange']({ className: 'IFCWALL', visible: false });
+
+    expect(mockViewerService.setItemsVisible).toHaveBeenCalledWith([1, 2, 3], false);
+    
+    const updatedClasses = component['ifcClasses']();
+    const wallClass = updatedClasses.find(c => c.name === 'IFCWALL');
+    expect(wallClass?.visible).toBeFalse();
+  });
+
+  it('should handle class visibility change for non-existent class', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    component['ifcClasses'].set([
+      { name: 'IFCWALL', visible: true, itemIds: [1, 2, 3] },
+    ]);
+
+    await component['onClassVisibilityChange']({ className: 'NONEXISTENT', visible: false });
+
+    // Should not call setItemsVisible for non-existent class
+    expect(mockViewerService.setItemsVisible).not.toHaveBeenCalled();
+  });
+
+  it('should handle class visibility change errors', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    component['ifcClasses'].set([
+      { name: 'IFCWALL', visible: true, itemIds: [1, 2, 3] },
+    ]);
+
+    mockViewerService.setItemsVisible.and.returnValue(Promise.reject(new Error('Visibility error')));
+
+    await component['onClassVisibilityChange']({ className: 'IFCWALL', visible: false });
+
+    expect(mockNotificationService.error).toHaveBeenCalled();
+  });
+
+  it('should handle file selection with no file', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    const mockEvent = {
+      target: {
+        files: [],
+        value: '',
+      },
+    } as any;
+
+    await component['onFileSelected'](mockEvent);
+
+    expect(mockViewerService.loadIfcFile).not.toHaveBeenCalled();
+  });
+
+  it('should load IFC classes after successful file load', async () => {
+    const fixture = TestBed.createComponent(IfcViewerComponent);
+    const component = fixture.componentInstance;
+
+    mockViewerService.getCategories.and.returnValue(
+      Promise.resolve(['IFCWALL', 'IFCDOOR'])
+    );
+    mockViewerService.getItemsOfCategories.and.returnValue(
+      Promise.resolve({
+        IFCWALL: [1, 2, 3],
+        IFCDOOR: [4, 5],
+      })
+    );
+    mockViewerService.loadIfcFile.and.returnValue(Promise.resolve({ uuid: 'test-model' } as any));
+
+    const mockFile = new File([''], 'test.ifc', { type: 'application/octet-stream' });
+    const mockEvent = {
+      target: {
+        files: [mockFile],
+        value: '',
+      },
+    } as any;
+
+    await component['onFileSelected'](mockEvent);
+    await fixture.whenStable();
+
+    expect(mockViewerService.getCategories).toHaveBeenCalled();
+    expect(mockViewerService.getItemsOfCategories).toHaveBeenCalled();
+    
+    const ifcClasses = component['ifcClasses']();
+    expect(ifcClasses.length).toBe(2);
   });
 });

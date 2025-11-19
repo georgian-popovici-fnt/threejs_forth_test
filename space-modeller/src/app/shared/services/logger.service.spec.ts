@@ -67,4 +67,45 @@ describe('LoggerService', () => {
     });
     expect(callbackExecuted).toBeTrue();
   });
+
+  it('should log additional arguments with debug messages', () => {
+    service.debug('Test debug message', 'arg1', 'arg2');
+    expect(service).toBeTruthy();
+  });
+
+  it('should log additional arguments with info messages', () => {
+    service.info('Test info message', 'arg1', 'arg2');
+    expect(service).toBeTruthy();
+  });
+
+  it('should log additional arguments with warning messages', () => {
+    service.warn('Test warning message', 'arg1', 'arg2');
+    expect(service).toBeTruthy();
+  });
+
+  it('should log additional arguments with error messages', () => {
+    service.error('Test error message', undefined, 'arg1', 'arg2');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should handle performance marks without errors', () => {
+    expect(() => {
+      service.startPerformanceMark('test-operation');
+      service.endPerformanceMark('test-operation');
+    }).not.toThrow();
+  });
+
+  it('should handle performance marks with missing start mark', () => {
+    expect(() => {
+      service.endPerformanceMark('non-existent-mark');
+    }).not.toThrow();
+  });
+
+  it('should execute callback even when logging is disabled', () => {
+    let callbackExecuted = false;
+    service.group('Test group', () => {
+      callbackExecuted = true;
+    });
+    expect(callbackExecuted).toBeTrue();
+  });
 });
