@@ -6,6 +6,7 @@ import * as OBC from '@thatopen/components';
 import * as FRAGS from '@thatopen/fragments';
 import { ViewerConfig, DEFAULT_VIEWER_CONFIG } from '../../../shared/models/viewer-config.model';
 import { CameraMode } from '../../../shared/models/camera-mode.model';
+import { LightMode } from '../../../shared/models/light-mode.model';
 import { TIMING, VIEWER } from '../../../shared/constants/app.constants';
 import { LoggerService } from '../../../shared/services/logger.service';
 import { environment } from '../../../../environments/environment';
@@ -42,6 +43,11 @@ export class IfcViewerService {
   private config: ViewerConfig = DEFAULT_VIEWER_CONFIG;
   private currentModel: FRAGS.FragmentsModel | null = null;
   private lastUpdateTime: number = 0;
+
+  // Lighting properties
+  private ambientLight: THREE.AmbientLight | null = null;
+  private directionalLight: THREE.DirectionalLight | null = null;
+  private currentLightMode: LightMode = LightMode.DEFAULT;
 
   // Public signal for the current camera (for reactive UI updates)
   public readonly cameraSignal = signal<THREE.Camera | null>(null);
@@ -116,7 +122,33 @@ export class IfcViewerService {
   }
 
   /**
+   * Configure OrbitControls for pan-only navigation
+   * Disables zoom and rotation, enables panning only
+   */
+  private configurePanOnlyControls(controls: OrbitControls): void {
+    controls.enablePan = true;
+    controls.enableZoom = false;
+    controls.enableRotate = false;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 1.0;
+
+    // Map all mouse buttons to pan
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.PAN,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+
+    // Map all touch gestures to pan
+    controls.touches = {
+      ONE: THREE.TOUCH.PAN,
+      TWO: THREE.TOUCH.PAN,
+    };
+  }
+
+  /**
    * Initialize OrbitControls for camera manipulation
+   * Configured for pan-only navigation (no zoom, no rotation)
    */
   private initializeControls(): void {
     if (!this.camera || !this.canvas) return;
@@ -124,6 +156,9 @@ export class IfcViewerService {
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+
+    // Configure pan-only navigation
+    this.configurePanOnlyControls(this.controls);
 
     // Set camera target
     this.controls.target.set(
@@ -133,6 +168,12 @@ export class IfcViewerService {
     );
 
     this.controls.update();
+
+    // Prevent browser default wheel behavior
+    if (this.canvas) {
+      this.canvas.style.touchAction = 'none';
+      this.canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    }
   }
 
   /**
@@ -227,12 +268,8 @@ export class IfcViewerService {
       this.controls.dampingFactor = 0.05;
       this.controls.target.copy(currentTarget);
       
-      // For orthographic views, disable rotation to keep the view locked
-      if (mode !== CameraMode.PERSPECTIVE_3D) {
-        this.controls.enableRotate = false;
-      } else {
-        this.controls.enableRotate = true;
-      }
+      // Maintain pan-only configuration (no zoom, no rotation)
+      this.configurePanOnlyControls(this.controls);
       
       this.controls.update();
     }
@@ -261,12 +298,12 @@ export class IfcViewerService {
   private setupLighting(): void {
     if (!this.scene) return;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(this.ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 10, 10);
-    this.scene.add(directionalLight);
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.directionalLight.position.set(10, 10, 10);
+    this.scene.add(this.directionalLight);
   }
 
   /**
@@ -838,5 +875,48 @@ export class IfcViewerService {
     } catch (error) {
       this.logger.error('Error setting item visibility:', error);
     }
+  }
+
+  /**
+   * Set lighting mode
+   */
+  setLightMode(mode: LightMode): void {
+    if (!this.ambientLight || !this.directionalLight) {
+      this.logger.warn('Lights not initialized');
+      return;
+    }
+
+    this.currentLightMode = mode;
+
+    switch (mode) {
+      case LightMode.DEFAULT:
+        this.ambientLight.intensity = 0.5;
+        this.directionalLight.intensity = 0.8;
+        break;
+
+      case LightMode.BRIGHT:
+        this.ambientLight.intensity = 0.8;
+        this.directionalLight.intensity = 1.2;
+        break;
+
+      case LightMode.SOFT:
+        this.ambientLight.intensity = 0.7;
+        this.directionalLight.intensity = 0.3;
+        break;
+
+      case LightMode.DRAMATIC:
+        this.ambientLight.intensity = 0.2;
+        this.directionalLight.intensity = 1.5;
+        break;
+    }
+
+    this.logger.info(`Light mode changed to: ${mode}`);
+  }
+
+  /**
+   * Get current light mode
+   */
+  getLightMode(): LightMode {
+    return this.currentLightMode;
   }
 }

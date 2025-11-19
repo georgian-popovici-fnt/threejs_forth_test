@@ -55,6 +55,12 @@
         (modeChange)="onCameraModeChange($event)"
       ></app-camera-selector>
 
+      <!-- Light Selector -->
+      <app-light-selector
+        [selectedMode]="currentLightMode()"
+        (modeChange)="onLightModeChange($event)"
+      ></app-light-selector>
+
       <!-- File Import -->
       <label class="sidebar-button" for="ifc-file-input">
         <svg
