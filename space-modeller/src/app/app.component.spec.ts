@@ -11,7 +11,9 @@ describe('AppComponent', () => {
     mockViewerService = jasmine.createSpyObj('IfcViewerService', [
       'initialize',
       'dispose',
-    ]);
+    ], {
+      cameraSignal: jasmine.createSpy('cameraSignal').and.returnValue(null),
+    });
 
     await TestBed.configureTestingModule({
       imports: [AppComponent, IfcViewerComponent, NotificationComponent],

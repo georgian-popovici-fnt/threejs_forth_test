@@ -92,4 +92,63 @@ describe('IfcClassFilterComponent', () => {
     expect(checkboxes[0].checked).toBeTrue();
     expect(checkboxes[1].checked).toBeFalse();
   });
+
+  it('should update signal when classes setter is called', () => {
+    const fixture = TestBed.createComponent(IfcClassFilterComponent);
+    const component = fixture.componentInstance;
+
+    const mockClasses: IfcClass[] = [
+      { name: 'IfcWall', visible: true, itemIds: [1, 2, 3] },
+    ];
+
+    component.classes = mockClasses;
+    
+    expect(component['ifcClasses']()).toEqual(mockClasses);
+  });
+
+  it('should handle empty classes array', () => {
+    const fixture = TestBed.createComponent(IfcClassFilterComponent);
+    const component = fixture.componentInstance;
+
+    component.classes = [];
+    fixture.detectChanges();
+
+    expect(component['ifcClasses']()).toEqual([]);
+    
+    const compiled = fixture.nativeElement as HTMLElement;
+    const emptyMessage = compiled.querySelector('.filter-empty');
+    expect(emptyMessage?.textContent).toContain('No classes available');
+  });
+
+  it('should toggle visibility and emit correct event for visible class', () => {
+    const fixture = TestBed.createComponent(IfcClassFilterComponent);
+    const component = fixture.componentInstance;
+
+    const mockClass: IfcClass = { name: 'IfcWall', visible: true, itemIds: [1, 2, 3] };
+    
+    spyOn(component.visibilityChange, 'emit');
+
+    component['onToggleVisibility'](mockClass);
+
+    expect(component.visibilityChange.emit).toHaveBeenCalledWith({
+      className: 'IfcWall',
+      visible: false,
+    });
+  });
+
+  it('should toggle visibility and emit correct event for hidden class', () => {
+    const fixture = TestBed.createComponent(IfcClassFilterComponent);
+    const component = fixture.componentInstance;
+
+    const mockClass: IfcClass = { name: 'IfcDoor', visible: false, itemIds: [4, 5] };
+    
+    spyOn(component.visibilityChange, 'emit');
+
+    component['onToggleVisibility'](mockClass);
+
+    expect(component.visibilityChange.emit).toHaveBeenCalledWith({
+      className: 'IfcDoor',
+      visible: true,
+    });
+  });
 });
