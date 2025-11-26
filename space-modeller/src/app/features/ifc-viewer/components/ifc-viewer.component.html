@@ -1,0 +1,125 @@
+<div class="viewer-container">
+  <!-- 3D Canvas -->
+  <canvas
+    #canvas
+    class="viewport-canvas"
+    [class.is-dragging]="isDragging()"
+    (mousedown)="onCanvasMouseDown($event)"
+    (mouseup)="onCanvasMouseUp()"
+    (mouseleave)="onCanvasMouseUp()"
+    role="application"
+    aria-label="3D viewport"
+  ></canvas>
+
+  <!-- Orientation Cube -->
+  <app-orientation-cube [camera]="currentCamera()" />
+
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed()">
+    <!-- Toggle Button -->
+    <button
+      class="sidebar-toggle"
+      (click)="toggleSidebar()"
+      type="button"
+      [attr.aria-label]="isSidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+      [attr.aria-expanded]="!isSidebarCollapsed()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        role="img"
+        [attr.aria-label]="isSidebarCollapsed() ? 'Expand icon' : 'Collapse icon'"
+      >
+        @if (isSidebarCollapsed()) {
+          <polyline points="9 18 15 12 9 6"></polyline>
+        } @else {
+          <polyline points="15 18 9 12 15 6"></polyline>
+        }
+      </svg>
+    </button>
+
+    <!-- Sidebar Content -->
+    <div class="sidebar-content">
+      <h2 class="sidebar-title">Tools</h2>
+
+      <!-- Camera Selector -->
+      <app-camera-selector
+        [selectedMode]="currentCameraMode()"
+        (modeChange)="onCameraModeChange($event)"
+      ></app-camera-selector>
+
+      <!-- File Import -->
+      <label class="sidebar-button" for="ifc-file-input">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span>Load IFC</span>
+      </label>
+      <input
+        id="ifc-file-input"
+        type="file"
+        accept=".ifc"
+        (change)="onFileSelected($event)"
+        class="file-input"
+      />
+
+      <!-- Export Fragments -->
+      <button
+        class="sidebar-button"
+        (click)="onExportFragments()"
+        [disabled]="isLoading()"
+        type="button"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Download .frag</span>
+      </button>
+
+      <!-- IFC Class Filter -->
+      <app-ifc-class-filter
+        [classes]="ifcClasses()"
+        (visibilityChange)="onClassVisibilityChange($event)"
+      ></app-ifc-class-filter>
+    </div>
+  </aside>
+
+  <!-- Loading Indicator -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading {{ currentFileName() }}...</div>
+    </div>
+  }
+</div>
